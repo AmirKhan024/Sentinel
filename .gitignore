@@ -1,0 +1,48 @@
+# --- Data ---------------------------------------------------------------
+# Raw/interim/processed data is reproducible from the API and can be large.
+# It is deliberately NOT version controlled. Manifests ARE, because they are
+# small, human-readable provenance records that describe what was ingested.
+data/raw/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+!data/raw/**/
+!data/raw/**/manifest_*.json
+
+*.parquet
+*.csv
+*.jsonl
+
+# --- Python -------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Environments -------------------------------------------------------
+.venv/
+venv/
+env/
+.env
+.env.local
+
+# --- Tooling caches -----------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Editors / OS -------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

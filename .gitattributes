@@ -1,0 +1,5 @@
+# Normalise line endings so the repository is consistent across Windows/Linux
+# (CI runs on ubuntu-latest, development here is on Windows).
+* text=auto eol=lf
+
+*.parquet binary
