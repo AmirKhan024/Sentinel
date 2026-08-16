@@ -15,19 +15,26 @@ after it, so the pair can never drift apart on disk.
 
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from sentinel.manifest import compute_sha256, manifest_path_for, read_manifest_as, write_manifest
+
 logger = logging.getLogger(__name__)
 
-# Read in chunks so hashing a multi-hundred-MB full pull does not load the
-# whole file into memory.
-_HASH_CHUNK_BYTES = 1024 * 1024
+# The generic mechanics moved to sentinel.manifest when Component 2 began
+# writing artifacts of its own. They are re-exported here so callers and tests
+# that predate the split keep working unchanged.
+__all__ = [
+    "IngestionManifest",
+    "compute_sha256",
+    "manifest_path_for",
+    "read_manifest",
+    "write_manifest",
+]
 
 
 class IngestionManifest(BaseModel):
@@ -60,36 +67,6 @@ class IngestionManifest(BaseModel):
     sha256: str
 
 
-def compute_sha256(path: Path) -> str:
-    """Checksum a file so "is this the file the manifest describes?" is answerable."""
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(_HASH_CHUNK_BYTES):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def manifest_path_for(parquet_path: Path) -> Path:
-    """Sidecar path for a given Parquet file.
-
-    ``food_inspections_20260815T140000Z.parquet``
-    -> ``manifest_food_inspections_20260815T140000Z.json``
-
-    The ``manifest_`` prefix is what .gitignore whitelists, so manifests are
-    committed while the Parquet files beside them are not.
-    """
-    return parquet_path.with_name(f"manifest_{parquet_path.stem}.json")
-
-
-def write_manifest(manifest: IngestionManifest, path: Path) -> Path:
-    """Write the manifest as indented JSON. Returns the path written."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = manifest.model_dump(mode="json")
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    logger.info("Wrote manifest: %s", path)
-    return path
-
-
 def read_manifest(path: Path) -> IngestionManifest:
-    """Load a manifest back, validating it against the model."""
-    return IngestionManifest.model_validate_json(path.read_text(encoding="utf-8"))
+    """Load an ingestion manifest back, validating it against the model."""
+    return read_manifest_as(IngestionManifest, path)
