@@ -301,3 +301,150 @@ def test_build_target_reports_when_no_raw_file_exists(
 ) -> None:
     monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
     assert main(["build-target"]) == 1
+
+
+# --- build-features subcommand ---------------------------------------------
+
+
+def test_build_features_parses_with_no_flags() -> None:
+    args = parse(["build-features"])
+    assert args.command == "build-features"  # type: ignore[attr-defined]
+    assert args.parquet is None  # type: ignore[attr-defined]
+    assert args.assignments is None  # type: ignore[attr-defined]
+    assert args.targets is None  # type: ignore[attr-defined]
+
+
+def test_build_features_accepts_all_three_input_overrides() -> None:
+    args = parse(
+        [
+            "build-features",
+            "--parquet",
+            "raw.parquet",
+            "--assignments",
+            "asg.parquet",
+            "--targets",
+            "tgt.parquet",
+        ]
+    )
+    assert args.parquet == Path("raw.parquet")  # type: ignore[attr-defined]
+    assert args.assignments == Path("asg.parquet")  # type: ignore[attr-defined]
+    assert args.targets == Path("tgt.parquet")  # type: ignore[attr-defined]
+
+
+def test_build_features_accepts_dry_run_and_report() -> None:
+    args = parse(["build-features", "--dry-run", "--report"])
+    assert args.dry_run is True  # type: ignore[attr-defined]
+    assert args.report is True  # type: ignore[attr-defined]
+
+
+def _tiny_feature_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
+    import polars as pl
+
+    from tests.conftest import assignment_frame, make_inspection_record, target_scenario
+
+    raw = tmp_path / "food_inspections_20260816T000000Z.parquet"
+    asg = tmp_path / "establishment_assignments_20260816T000000Z.parquet"
+    tgt = tmp_path / "inspection_targets_20260816T000000Z.parquet"
+    rows = [
+        make_inspection_record(1, inspection_id="1", inspection_date="2020-01-01T00:00:00.000"),
+        make_inspection_record(2, inspection_id="2", inspection_date="2022-01-01T00:00:00.000"),
+    ]
+    target_scenario(rows).write_parquet(raw)
+    assignment_frame([("1", "EST-A"), ("2", "EST-A")]).write_parquet(asg)
+    pl.DataFrame(
+        {
+            "establishment_id": ["EST-A"],
+            "inspection_date": ["2022-01-01T00:00:00.000"],
+            "target_inspection_id": ["2"],
+            "target": [1],
+            "target_status": ["eligible"],
+            "code_era_phase": ["stable"],
+        },
+        schema={
+            "establishment_id": pl.Utf8,
+            "inspection_date": pl.Utf8,
+            "target_inspection_id": pl.Utf8,
+            "target": pl.Int8,
+            "target_status": pl.Utf8,
+            "code_era_phase": pl.Utf8,
+        },
+    ).write_parquet(tgt)
+    return raw, asg, tgt
+
+
+def test_build_features_writes_and_exits_zero(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw, asg, tgt = _tiny_feature_inputs(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "features"
+    code = main(
+        [
+            "build-features",
+            "--parquet",
+            str(raw),
+            "--assignments",
+            str(asg),
+            "--targets",
+            str(tgt),
+            "--output-dir",
+            str(out),
+        ]
+    )
+    assert code == 0
+    assert list(out.glob("as_of_features_*.parquet"))
+    assert list(out.glob("manifest_as_of_features_*.json"))
+
+
+def test_build_features_dry_run_writes_nothing(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw, asg, tgt = _tiny_feature_inputs(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "features"
+    code = main(
+        [
+            "build-features",
+            "--parquet",
+            str(raw),
+            "--assignments",
+            str(asg),
+            "--targets",
+            str(tgt),
+            "--output-dir",
+            str(out),
+            "--dry-run",
+        ]
+    )
+    assert code == 0
+    assert not out.exists()
+
+
+def test_build_features_reports_a_missing_input_without_a_traceback(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, asg, tgt = _tiny_feature_inputs(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert (
+        main(
+            [
+                "build-features",
+                "--parquet",
+                str(tmp_path / "absent.parquet"),
+                "--assignments",
+                str(asg),
+                "--targets",
+                str(tgt),
+            ]
+        )
+        == 1
+    )
+
+
+def test_build_features_reports_when_no_upstream_files_exist(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert main(["build-features"]) == 1
