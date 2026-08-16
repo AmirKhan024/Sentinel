@@ -75,7 +75,7 @@ report cast failures rather than coercing them to null.
 | `zip` | number | Utf8 | Postal code as a string; leading zeros would be preserved |
 | `inspection_date` | calendar_date / floating_timestamp | Utf8 | ISO-8601 with a zero time component, e.g. `2010-01-05T00:00:00.000` |
 | `inspection_type` | text | Utf8 | e.g. `Canvass`, `Complaint`, `License` |
-| `results` | text | Utf8 | e.g. `Pass`, `Fail`, `Pass w/ Conditions`, `Out of Business` |
+| `results` | text | Utf8 | Exactly 7 values; see the note below the table |
 | `violations` | text | Utf8 | Long free text; multiple violations separated by ` \| `, each with a numbered code and a `- Comments:` section |
 | `latitude` | number | Utf8 | WGS84, as a string. May be null |
 | `longitude` | number | Utf8 | WGS84, as a string. May be null |
@@ -106,6 +106,32 @@ harmonisation (`""` vs `null` vs `"N/A"`), deduplication, filtering, renaming,
 or column dropping.
 
 ---
+
+### `results`: the complete value set
+
+Measured over all 314,245 rows of the full snapshot
+(`food_inspections_20260816T070911Z.parquet`), not inferred from documentation:
+
+| value | rows | share |
+|---|---|---|
+| `Pass` | 162,607 | 51.745% |
+| `Fail` | 60,513 | 19.257% |
+| `Pass w/ Conditions` | 46,661 | 14.849% |
+| `Out of Business` | 25,767 | 8.200% |
+| `No Entry` | 14,045 | 4.469% |
+| `Not Ready` | 4,557 | 1.450% |
+| `Business Not Located` | 95 | 0.030% |
+
+There are no nulls, no blanks, no untrimmed values and no case variants: the
+column has 7 distinct values whether or not it is uppercased and trimmed.
+
+**This corrects an earlier version of this contract**, which listed only the
+first four and presented them as examples. `No Entry`, `Not Ready` and
+`Business Not Located` account for 18,697 rows (5.9%) and were undocumented.
+They matter: together with `Out of Business` they mark records where **no
+inspection actually took place**, and 97.5-100% of them have null `violations`.
+Component 3 treats all four as ineligible rather than as outcomes. See
+`docs/analysis/target_construction_findings.md` §2 and §9.
 
 ## Manifest
 
@@ -149,8 +175,18 @@ must handle them.
 4. **Blank vs null are different.** The source uses empty strings in some
    places (observed in `facility_type`) and true nulls in others. Both survive
    verbatim; neither is harmonised.
-5. **`violations` is unstructured.** Numbered codes and comments in one long
-   string, with ` | ` between entries. Parsing it is a later component's job.
+5. **`violations` is semi-structured, and its meaning changed in 2018.**
+   Entries are separated by `|`; each is `NN. UPPERCASE TITLE - Comments: text`.
+   Measured over the code era, 100% of entries are numbered and 99.8% carry a
+   `- Comments:` section, so it is more regular than "free text" suggests.
+   28.16% of rows have null `violations`.
+
+   Critically, **Chicago replaced its violation-classification scheme on
+   2018-07-01**. Before that date the text uses "Critical"/"Serious violation";
+   from that date it uses "Priority"/"Priority Foundation"/"Core". The cutover is
+   clean, with no overlap month. Any analysis spanning the boundary must treat
+   the two eras as different measurements. See
+   `docs/analysis/target_construction_findings.md` §5.
 6. **Geocoding may be missing.** `latitude`/`longitude`/`location` can be null,
    in which case the `:@computed_region_*` columns are also absent.
 7. **The dataset is live.** Two ingestions on different days will differ. This
