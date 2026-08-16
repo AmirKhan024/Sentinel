@@ -79,6 +79,17 @@ class Settings(BaseSettings):
         return self.data_dir / "processed"
 
     @property
+    def features_processed_dir(self) -> Path:
+        """Where Component 4 writes the as-of feature table.
+
+        Processed rather than interim: ADR 0005 reserves the processed layer for
+        analysis- and model-ready outputs, and this is the first table that
+        qualifies -- features joined to labels, one row per prediction
+        opportunity, directly trainable. See ADR 0011.
+        """
+        return self.processed_dir / "features"
+
+    @property
     def target_interim_dir(self) -> Path:
         """Where Component 3 writes the prediction target.
 

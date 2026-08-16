@@ -12,6 +12,8 @@ data/processed/*
 !data/raw/**/manifest_*.json
 !data/interim/**/
 !data/interim/**/manifest_*.json
+!data/processed/**/
+!data/processed/**/manifest_*.json
 
 *.parquet
 *.csv
