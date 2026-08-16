@@ -698,3 +698,172 @@ the point of doing the investigation.
 ---
 
 <!-- §16 is appended after the resolver has been run against this snapshot. -->
+
+## 16. Post-resolution results
+
+Written after running the finished resolver against the same snapshot
+(`sentinel resolve --report`, 43 s wall time). This closes the loop between the
+investigation above and what the implementation actually produced.
+
+### 16.1 Headline
+
+| Quantity | Value |
+|---|---|
+| Input rows | 314,245 |
+| Distinct nodes (identity signatures) | 51,099 |
+| **Establishments** | **35,859** |
+| Distinct usable licences (for comparison) | 48,963 |
+| Reduction ratio (establishments ÷ licences) | 0.73 |
+| Candidate pairs evaluated | 335,393 |
+| Oversized blocks skipped | 0 |
+| Blacklisted coordinates | 0 |
+| Rows with no usable licence | 850 |
+| Distinct address keys | 19,287 |
+
+The reduction ratio is the key sanity number. At ≈1.0 the matcher would be doing
+nothing; far below, it would be over-merging. 0.73 says roughly a quarter of
+licences were folded into an establishment that already existed — consistent
+with §3.2's measurement that 18.47% of places hold more than one licence.
+
+### 16.2 Edge outcomes
+
+| rule | tier | pairs | meaning |
+|---|---|---|---|
+| V3 | no_match | 54,462 | conflicting store numbers |
+| S2 | strong | 21,381 | same place, same name |
+| S1 | strong | 7,869 | same place, same licence |
+| V4 | no_match | 2,997 | shared operator name, disagreeing trade names |
+| P2 | probable | 2,908 | name containment at one place |
+| A2 | ambiguous | 375 | containment with conflicting facility types |
+| A1 | ambiguous | 372 | one licence at two different places |
+| V1 | no_match | 239 | conflicting directionals |
+| S3 | strong | 30 | licence + name, house number off by ≤2 |
+| P1 | probable | 7 | licence, house number off by ≤2 |
+| V2 | no_match | 3 | conflicting suites |
+
+**S2 does most of the work** (21,381 of 29,280 strong edges). That is the rule
+that repairs the multi-licence establishments, and it is also the rule carrying
+the most false-merge risk — which is why V3 and V4 exist and why V3 fires more
+often than any merge rule.
+
+**Only 747 pairs are ambiguous**, a genuinely reviewable queue. An earlier
+iteration classified "same address, same facility type, unrelated names" as
+ambiguous and produced 108,597 — inspecting those showed ordinary strip-mall
+neighbours and successive tenants, so they were reclassified as rule N2, a
+decision rather than a doubt.
+
+`V2` firing only 3 times confirms §7's prediction: units appear on 1.96% of
+addresses, so the unit veto is nearly inert. It was retained because when it
+does fire it is right, and it costs nothing.
+
+### 16.3 Confidence and tiers
+
+| establishment confidence | count |
+|---|---|
+| high (strong edges only) | 34,401 |
+| medium (at least one probable edge) | 1,438 |
+| reduced (survived a cluster split) | 20 |
+
+| assignment row tier | rows |
+|---|---|
+| singleton | 176,076 |
+| high | 110,686 |
+| medium | 27,436 |
+| reduced | 47 |
+
+Only 20 clusters out of 35,859 tripped an invariant and had to be rebuilt — all
+of them on `conflicting_units`, all resolved by the degradation ladder.
+
+### 16.4 Inspection history per establishment
+
+| inspections | establishments |
+|---|---|
+| 1 | 6,084 (17.0%) |
+| 2–5 | 12,448 |
+| 6–20 | 13,018 |
+| more than 20 | 4,309 |
+| maximum | 286 |
+| mean | 8.76 |
+
+**The single-inspection rate fell from 12,356 (licence-only grouping) to 6,084 —
+a 51% reduction.** That is the clearest evidence the resolver is recovering real
+history: half the establishments that looked like one-off inspections under a
+naive licence grouping are actually places with a longer record under another
+licence or spelling. Component 3 has materially more history to work with as a
+direct result.
+
+8,931 establishments (24.9%) hold more than one licence, the largest holding 62.
+3,071 (8.6%) have carried more than one name, the largest 13.
+
+### 16.5 Largest establishments, checked by hand
+
+| establishment | nodes | inspections | licences | names | place |
+|---|---|---|---|---|---|
+| EST-00000068356 | 86 | 185 | 1 | 3 | Illinois Sportservice, Guaranteed Rate Field |
+| EST-00000058536 | 68 | 105 | 16 | 3 | The United Center |
+| EST-00000068276 | 64 | 84 | 62 | 6 | Triple A Services commissary |
+| EST-00000112420 | 53 | 191 | 1 | 3 | Sportservice, Soldier Field |
+| EST-00000068349 | 34 | 54 | 32 | 1 | Thunderbird Catering |
+| EST-00001152088 | 23 | 33 | 23 | 1 | Bambi (pushcart operator) |
+
+Every one is a real single premises: two stadiums, an arena, and three
+mobile-food commissaries whose many licences are per-cart permits. None is a
+chained over-merge.
+
+### 16.6 The over-merge this run caught, and the fix
+
+The **first** full run produced a 47-node cluster at O'Hare containing 23
+distinct business names — Starbucks in Terminal 3, Johnny Rockets in Terminal 2,
+Chili's Too, Goose Island, La Tapenade, Brioche Dorée and more. All carried
+`dba_name = HOST INTERNATIONAL INC`, the concessionaire, with the actual
+identity in `aka_name`. Rule S2 matched them on the operator name and transitive
+merging chained the rest.
+
+This is precisely the false merge §12 warned about: it would have pooled about
+twenty restaurants' inspection histories onto one identity and corrupted every
+downstream feature for all of them.
+
+Veto **V4** was added in response: when the name evidence driving a merge is a
+shared name but the trade names actively disagree, the pair does not merge. It
+is waived when the licence agrees, because one licence at one address is a
+single premises even across a rename. After the fix those 291 rows resolve to 14
+establishments, one per outlet, each retaining its multi-year history.
+
+A first version of V4 was too broad — it fired on any two differently-named
+neighbours and would have blocked legitimate containment merges such as
+`HOT WOK CHINESE KITCHEN` / `NEW HOT WOK CHINESE KITCHEN`. The unit test suite
+caught that before it reached the data. The shipped version requires that name
+evidence is actually driving the merge, and lets trade names corroborate by
+containment as well as equality.
+
+**Both the over-merge and the over-correction are now regression tests**
+(`tests/fixtures/real_cases.py`).
+
+### 16.7 Output artifacts
+
+| file | rows | bytes |
+|---|---|---|
+| `establishment_assignments_20260816T085729Z.parquet` | 314,245 | 5,933,587 |
+| `establishments_20260816T085729Z.parquet` | 35,859 | 2,068,779 |
+| `entity_resolution_edges_20260816T085729Z.parquet` | 90,643 | 1,271,247 |
+| `manifest_establishment_assignments_20260816T085729Z.json` | — | 6,062 |
+
+All nine error-severity validation checks pass. Determinism was verified
+directly on the full snapshot: resolving a seeded random permutation of all
+314,245 input rows produced a byte-identical `inspection_id → establishment_id`
+mapping.
+
+### 16.8 What remains unresolved
+
+- **Chains at mega-addresses.** Two same-name outlets at one address with no
+  store number and no distinguishing trade name will still merge. `MCDONALD'S`
+  at O'Hare is 22 nodes across 20 licences and 5 names; some of that may be
+  more than one physical counter. This is the residual false-merge risk and it
+  is bounded to dense addresses.
+- **Stadiums and arenas.** The United Center resolves to one establishment
+  holding 16 licences. Whether an arena is one premises or many is a genuine
+  definitional question, not a bug; the current answer follows the
+  physical-premises definition in §11.1.
+- **A2 and A1 pairs** (747 total) have never been manually adjudicated. They are
+  the intended review queue and are recorded in the edges table for exactly
+  that purpose.
