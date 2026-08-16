@@ -1,0 +1,243 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1143762,
+      "path": "as_of_features_20260816T150313Z.parquet",
+      "row_count": 57727,
+      "schema": {
+        "canvass_priority_events_last_1095d": "Int32",
+        "canvass_priority_events_last_365d": "Int32",
+        "canvass_priority_events_last_730d": "Int32",
+        "canvasses_last_1095d": "Int32",
+        "canvasses_last_365d": "Int32",
+        "canvasses_last_730d": "Int32",
+        "code_era_phase": "String",
+        "days_since_any_inspection": "Int32",
+        "days_since_first_inspection": "Int32",
+        "days_since_last_canvass": "Int32",
+        "establishment_id": "String",
+        "fail_at_last_canvass": "Boolean",
+        "feature_definition_version": "String",
+        "inspection_date": "String",
+        "name_changed_since_last_canvass": "Boolean",
+        "prior_canvass_count": "Int32",
+        "prior_canvass_count_code_era": "Int32",
+        "prior_canvass_count_current_name": "Int32",
+        "prior_canvass_fail_count": "Int32",
+        "prior_canvass_fail_rate": "Float64",
+        "prior_canvass_inspected_count": "Int32",
+        "prior_canvass_pass_w_conditions_count": "Int32",
+        "prior_canvass_priority_count": "Int32",
+        "prior_canvass_priority_foundation_count": "Int32",
+        "prior_canvass_priority_rate": "Float64",
+        "prior_complaint_count": "Int32",
+        "prior_inspection_count_any_type": "Int32",
+        "prior_license_inspection_count": "Int32",
+        "prior_reinspection_count": "Int32",
+        "priority_at_last_canvass": "Boolean",
+        "target": "Int8",
+        "target_inspection_id": "String",
+        "target_status": "String"
+      },
+      "sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f"
+    }
+  ],
+  "assignments_path": "establishment_assignments_20260816T085729Z.parquet",
+  "assignments_sha256": "9b0e6808ebfc35c5f7cce51634e4eb5a4bd4d2821530b3ef391facfdebdb882a",
+  "built_at": "2026-08-16T15:03:13.987168+00:00",
+  "checks": [
+    {
+      "detail": "57727 feature rows for 57727 eligible target rows",
+      "name": "one_feature_row_per_eligible_target",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 duplicate target_inspection_id values",
+      "name": "target_inspection_id_unique",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 feature rows reference a target row that does not exist",
+      "name": "every_row_traces_to_a_target",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows reference an establishment absent from Component 2",
+      "name": "establishment_id_from_component_2",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows used an inspection dated on or after their reference date (checked on every row, independently re-derived)",
+      "name": "temporal_boundary_holds",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows admitted a same-day record into their history",
+      "name": "reference_date_records_are_never_history",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 integer features contain a negative value",
+      "name": "no_negative_counts_or_recency",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rate features fall outside [0, 1]",
+      "name": "rates_within_zero_and_one",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 features violate their declared missing-value rule",
+      "name": "null_rules_hold_exactly",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 window relationships are impossible",
+      "name": "windows_are_nested_and_bounded",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 Component 3 outcome columns appear in the feature table",
+      "name": "no_outcome_columns_present",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 columns use a forbidden prefix",
+      "name": "no_unspecified_or_future_columns",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 columns are declared as both a feature and a label",
+      "name": "features_and_labels_are_disjoint",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 declared columns are missing from the output",
+      "name": "all_declared_columns_present",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 columns exist without a FeatureSpec, so they are undocumented and untested",
+      "name": "every_column_is_declared",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "8 features: prior_canvass_count, prior_canvass_count_code_era, prior_canvass_inspected_count, days_since_last_canvass, prior_canvass_fail_count, prior_canvass_pass_w_conditions_count, prior_canvass_fail_rate, fail_at_last_canvass",
+      "name": "family_canvass_history",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "4 features: prior_canvass_priority_count, prior_canvass_priority_foundation_count, prior_canvass_priority_rate, priority_at_last_canvass",
+      "name": "family_priority_history",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "6 features: canvasses_last_365d, canvass_priority_events_last_365d, canvasses_last_730d, canvass_priority_events_last_730d, canvasses_last_1095d, canvass_priority_events_last_1095d",
+      "name": "family_window",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "5 features: prior_inspection_count_any_type, days_since_any_inspection, prior_complaint_count, prior_reinspection_count, prior_license_inspection_count",
+      "name": "family_context",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "2 features: name_changed_since_last_canvass, prior_canvass_count_current_name",
+      "name": "family_tenant",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "1 features: days_since_first_inspection",
+      "name": "family_observation",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "10 features contain nulls, each by an explicit rule",
+      "name": "null_rates",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "401 rows have no history at all; 5615 have no prior canvass",
+      "name": "cold_start_rows",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "1962 rows follow a business-name change at the same premises",
+      "name": "tenant_change_rows",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "code_era_start": "2018-07-01",
+  "code_version": "0.1.0",
+  "component": "as_of_features",
+  "eligible_target_rows": 57727,
+  "feature_count": 26,
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "null_rates": {
+    "canvass_priority_events_last_1095d": 0.0,
+    "canvass_priority_events_last_365d": 0.0,
+    "canvass_priority_events_last_730d": 0.0,
+    "canvasses_last_1095d": 0.0,
+    "canvasses_last_365d": 0.0,
+    "canvasses_last_730d": 0.0,
+    "days_since_any_inspection": 0.006946,
+    "days_since_first_inspection": 0.006946,
+    "days_since_last_canvass": 0.097268,
+    "fail_at_last_canvass": 0.097268,
+    "name_changed_since_last_canvass": 0.097268,
+    "prior_canvass_count": 0.0,
+    "prior_canvass_count_code_era": 0.0,
+    "prior_canvass_count_current_name": 0.0,
+    "prior_canvass_fail_count": 0.0,
+    "prior_canvass_fail_rate": 0.103262,
+    "prior_canvass_inspected_count": 0.0,
+    "prior_canvass_pass_w_conditions_count": 0.0,
+    "prior_canvass_priority_count": 0.245327,
+    "prior_canvass_priority_foundation_count": 0.245327,
+    "prior_canvass_priority_rate": 0.245327,
+    "prior_complaint_count": 0.0,
+    "prior_inspection_count_any_type": 0.0,
+    "prior_license_inspection_count": 0.0,
+    "prior_reinspection_count": 0.0,
+    "priority_at_last_canvass": 0.245327
+  },
+  "rows_with_name_change": 1962,
+  "rows_without_any_history": 401,
+  "rows_without_code_era_canvass": 14162,
+  "rows_without_prior_canvass": 5615,
+  "source_path": "food_inspections_20260816T070911Z.parquet",
+  "source_sha256": "7d3c4069340a68d197204c6cca9fca6399c6565bc3668760f145f43cd377ad38",
+  "targets_path": "inspection_targets_20260816T122821Z.parquet",
+  "targets_sha256": "1400d4e91937bd391e13f5a6f37866c2ce2102bcda354cffbd5feb3f899c0dab",
+  "temporal_boundary": "history.inspection_date < target.inspection_date (strictly before)",
+  "window_days": [
+    365,
+    730,
+    1095
+  ]
+}

@@ -397,4 +397,156 @@ Verified on the full snapshot in §14.
 
 ---
 
-<!-- §14 is appended after the feature table has been built. -->
+## 14. Full-data build results
+
+Written after running the finished builder against the same snapshot
+(`sentinel build-features --report`).
+
+### 14.1 Headline
+
+| quantity | value |
+|---|---|
+| eligible target rows in | 57,727 |
+| **feature rows out** | **57,727** |
+| unmatched rows | **0** |
+| features | 26 |
+| runtime | **15.6 s** |
+| output size | 1,143,762 bytes |
+
+Every eligible target row received exactly one feature row. No row was dropped,
+and none was duplicated.
+
+Only *eligible* target rows are featurised. The 255,897 ineligible rows have no
+prediction to make, so they have no feature row; the count reconciles exactly
+against Component 3 and is asserted by a check rather than assumed.
+
+### 14.2 Coverage of history
+
+| | rows | % |
+|---|---|---|
+| no history at all | 401 | 0.69 |
+| no prior canvass | 5,615 | 9.73 |
+| no prior code-era canvass | 14,162 | 24.53 |
+| following a business-name change | 1,962 | 3.40 |
+
+These match the profiling in section 3 exactly, which is the check that the build
+is doing what the investigation predicted.
+
+### 14.3 Null rates - every one by an explicit rule
+
+| feature | nulls | % | rule |
+|---|---|---|---|
+| `prior_canvass_priority_count` | 14,162 | 24.5 | no prior code-era canvass |
+| `prior_canvass_priority_foundation_count` | 14,162 | 24.5 | same |
+| `prior_canvass_priority_rate` | 14,162 | 24.5 | same |
+| `priority_at_last_canvass` | 14,162 | 24.5 | same |
+| `prior_canvass_fail_rate` | 5,961 | 10.3 | no prior *inspected* canvass |
+| `days_since_last_canvass` | 5,615 | 9.7 | no prior canvass |
+| `fail_at_last_canvass` | 5,615 | 9.7 | same |
+| `name_changed_since_last_canvass` | 5,615 | 9.7 | same |
+| `days_since_any_inspection` | 401 | 0.7 | no prior inspection |
+| `days_since_first_inspection` | 401 | 0.7 | same |
+
+The remaining 16 features contain no nulls at all, because they are counts and a
+count of 0 is a true observation.
+
+`prior_canvass_fail_rate` has **346 more** nulls than `days_since_last_canvass`
+(5,961 against 5,615). Those are establishments with prior canvasses of which
+*none* was an actual inspection - every one an `Out of Business` or `No Entry`.
+The denominator is correctly empty, so the rate is NULL rather than 0. This is
+the distinction section 6 predicted, showing up in the output exactly as
+designed.
+
+### 14.4 Feature distributions
+
+| feature | min | mean | p50 | max | zeros |
+|---|---|---|---|---|---|
+| `prior_canvass_count` | 0 | 7.86 | 7 | 247 | 5,615 |
+| `days_since_last_canvass` | **1** | 485.0 | 386 | 5,612 | **0** |
+| `days_since_first_inspection` | 1 | 3,118 | 3,277 | 6,060 | 0 |
+| `prior_canvass_fail_rate` | 0.0 | 0.218 | 0.167 | 1.0 | 16,117 |
+| `prior_canvass_priority_rate` | 0.0 | 0.575 | 0.500 | 1.0 | 6,456 |
+| `canvasses_last_365d` | 0 | 0.44 | 0 | 25 | 35,781 |
+
+**`days_since_last_canvass` has a minimum of 1 and no zeros at all.** That is the
+strict boundary showing through: a same-day record can never contribute, so a
+zero-day recency is unconstructable. It is the cheapest possible confirmation
+that the boundary is doing its job.
+
+`canvasses_last_365d` is 0 for 35,781 rows (62.0%), exactly the occupancy section
+5.1 predicted from the 358-day median cycle.
+
+`prior_canvass_priority_rate` averages 0.575 with 6,456 genuine zeros - an
+establishment-level base rate broadly in line with the 52.5% target rate, which
+is a sanity check rather than a result.
+
+### 14.5 The target is untouched
+
+| target | rows |
+|---|---|
+| 0 | 27,411 |
+| 1 | 30,316 |
+
+Identical to Component 3. No resampling, no reweighting, no filtering. Component
+4 adds columns; it does not touch the label.
+
+### 14.6 Validation
+
+All 15 error checks pass, including the two that matter most:
+
+```
+[PASS] temporal_boundary_holds
+       0 rows used an inspection dated on or after their reference date
+       (checked on every row, independently re-derived)
+[PASS] null_rules_hold_exactly
+       0 features violate their declared missing-value rule
+```
+
+### 14.7 Hand-traced verification
+
+`EST-00000044248` ("LA GONDOLA"), 24 raw inspections from 2010 to 2025, four
+eligible target rows. Checked against the raw timeline by eye.
+
+At the **2022-05-19** reference date the prior canvasses are the twelve dated
+2010-01-21 through 2020-07-14. Three of those are `No Entry`, and one more is not
+an inspection, leaving eight actually inspected; two of the eight are `Fail`.
+
+| feature | value | verified against the timeline |
+|---|---|---|
+| `prior_canvass_count` | 12 | twelve canvasses strictly before |
+| `prior_canvass_inspected_count` | 8 | excludes the `No Entry` attempts |
+| `prior_canvass_fail_count` | 2 | 2015-10-30 and 2020-07-14 |
+| `prior_canvass_fail_rate` | 0.25 | 2 / 8 |
+| `days_since_last_canvass` | 674 | 2020-07-14 to 2022-05-19 |
+| `fail_at_last_canvass` | true | 2020-07-14 was a `Fail` |
+| `prior_canvass_count_code_era` | 3 | 2018-07-03, 2020-07-07, 2020-07-14 |
+| `prior_canvass_priority_count` | 2 | the two of those that were cited |
+| `prior_inspection_count_any_type` | 18 | every record before 2022-05-19 |
+| `days_since_any_inspection` | 13 | a `Non-Inspection` on 2022-05-06 |
+| `canvasses_last_365d` | 0 | nothing between 2021-05-19 and 2022-05-19 |
+
+The **2018-07-03** row is the useful one for the null rules: it is the
+establishment's first code-era canvass, so `prior_canvass_count_code_era` is 0
+and all four priority features are NULL, while `prior_canvass_count` is 9 and
+`prior_canvass_fail_rate` is 0.167. Absence of priority evidence sits beside nine
+canvasses of ordinary history, exactly as intended.
+
+The **2020-07-14** row shows `days_since_last_canvass = 7`, because a `No Entry`
+canvass was attempted on 2020-07-07. That is correct: an attempted canvass is
+still a canvass, and `prior_canvass_inspected_count` excludes it from the outcome
+denominator without hiding it from recency.
+
+### 14.8 Performance
+
+The naive implementation took **2 m 14 s**. Two changes brought it to **15.6 s**
+with byte-identical output:
+
+1. **Materialise the aggregation as a table, not a view.** Validation runs dozens
+   of small checks; against a view each one re-executed the whole range join.
+2. **Parse only code-era violation text.** Priority did not exist before
+   2018-07-01, so a pre-code flag is `False` by definition rather than by
+   measurement. That halves the parser's work: 141,366 rows instead of 314,245.
+
+The range join itself produces 793,200 (target, prior inspection) pairs and
+aggregates in about 0.1 s. The work is dominated by the Python violation parser,
+not by the temporal logic.
