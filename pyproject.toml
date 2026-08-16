@@ -50,7 +50,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.12"
 strict = true
 warn_unreachable = true
-files = ["src/sentinel"]
+files = ["src/sentinel", "scripts"]
 
 [[tool.mypy.overrides]]
 module = ["duckdb.*"]

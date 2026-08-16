@@ -242,8 +242,9 @@ from pathlib import Path
 from sentinel.query.duckdb_queries import latest_parquet
 
 path = latest_parquet(Path("data/raw/food_inspections"))
-duckdb.sql(f"SELECT license_, count(*) n FROM read_parquet('{path}') "
-           "GROUP BY 1 ORDER BY n DESC LIMIT 20").show()
+duckdb.sql(
+    f"SELECT license_, count(*) n FROM read_parquet('{path}') GROUP BY 1 ORDER BY n DESC LIMIT 20"
+).show()
 ```
 
 **Reminder: one component at a time.** Component 2 is entity resolution only.
