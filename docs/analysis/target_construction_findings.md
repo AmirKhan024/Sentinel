@@ -699,3 +699,143 @@ a modelling and evaluation concern for later components.
 ---
 
 <!-- §19 is appended after the target has been built against this snapshot. -->
+
+## 19. Post-construction results
+
+Written after running the finished builder against the same snapshot
+(`sentinel build-target --report`, 25 s). This closes the loop between the
+investigation above and what the implementation produced.
+
+### 19.1 Headline
+
+| quantity | value |
+|---|---|
+| source rows | 314,245 |
+| target rows emitted | 313,624 |
+| **eligible (labelled) rows** | **57,727** |
+| positive | 30,316 |
+| negative | 27,411 |
+| **positive rate** | **52.52%** |
+| establishments with ≥1 eligible row | 15,144 |
+| runtime | 25 s |
+
+313,624 rows for 314,245 inspections: the difference is the 621 inspections
+absorbed by same-day collapse (530 establishment-dates carrying more than one
+eligible canvass). Every source inspection is represented exactly once, which is
+an error-severity check.
+
+### 19.2 Status breakdown
+
+| target_status | rows | meaning |
+|---|---|---|
+| `ineligible_era` | 172,879 | before 2018-07-01; the target did not exist |
+| `ineligible_type` | 70,848 | not a routine canvass |
+| `eligible` | 57,727 | labelled |
+| `ineligible_result` | 12,091 | no inspection took place |
+| `unknown_violations` | 79 | result and text contradict each other |
+
+The exclusions reconcile exactly with §9 and §10:
+12,091 = 10,389 `Out of Business` + 1,653 `No Entry` + 31 `Not Ready` + 18
+`Business Not Located`; 79 = 49 `Pass w/ Conditions` + 30 `Fail`.
+
+### 19.3 Labels
+
+| | rows |
+|---|---|
+| positive with Priority Foundation only | 20,024 |
+| positive with both PF and Priority | 7,086 |
+| positive with Priority only | 3,206 |
+| negative with Core-only violation text | 22,437 |
+| negative with no violation text (clean `Pass`) | 4,974 |
+
+Negatives are not simply empty rows: 82% of them recorded violations that were
+not Priority. The label separates severity, not activity.
+
+By result, among eligible rows:
+
+| results | rows | positive | % |
+|---|---|---|---|
+| Pass | 27,099 | 122 | 0.45 |
+| Pass w/ Conditions | 16,617 | 16,261 | 97.9 |
+| Fail | 14,011 | 13,933 | 99.4 |
+
+The 122 positive `Pass` canvasses are the genuine uncited Priority violations of
+§8.2 — a result summary of "Pass" alongside a real finding. They stay positive.
+
+### 19.4 Drift and phase
+
+| year | eligible | positive | % |
+|---|---|---|---|
+| 2018 (H2) | 2,829 | 2,477 | 87.6 |
+| 2019 | 8,230 | 6,368 | 77.4 |
+| 2020 | 6,133 | 3,645 | 59.4 |
+| 2021 | 6,154 | 3,096 | 50.3 |
+| 2022 | 6,552 | 3,049 | 46.5 |
+| 2023 | 7,196 | 3,318 | 46.1 |
+| 2024 | 8,481 | 3,613 | 42.6 |
+| 2025 | 8,269 | 3,241 | 39.2 |
+| 2026 (partial) | 3,883 | 1,519 | 39.1 |
+
+| `code_era_phase` | rows | positive rate |
+|---|---|---|
+| `adoption` | 2,829 | 87.6% |
+| `stable` | 54,898 | 50.7% |
+
+The adoption phase is 4.9% of eligible rows and carries a base rate 37 points
+above the stable period. Flagged, not dropped.
+
+### 19.5 Validation
+
+All twelve error-severity checks pass:
+
+```
+[PASS] establishment_id_from_component_2
+[PASS] target_inspection_exists
+[PASS] one_eligible_row_per_establishment_date
+[PASS] every_inspection_accounted_for       314,245 of 314,245
+[PASS] label_present_exactly_when_eligible
+[PASS] target_is_binary
+[PASS] eligible_rows_are_in_the_code_era
+[PASS] eligible_rows_are_canvasses
+[PASS] eligible_rows_describe_a_real_inspection
+[PASS] positives_carry_evidence
+[PASS] label_matches_priority_flags
+[PASS] single_target_definition_version
+```
+
+**Determinism verified on the full snapshot**, not just in unit tests: rebuilding
+reproduces the committed table exactly, and building from a seeded random
+permutation of all 314,245 input rows produces an identical label set.
+
+### 19.6 Hand-traced labels
+
+Sampled positives and negatives traced back to their raw violation text:
+
+| inspection | result | label | evidence / text |
+|---|---|---|---|
+| 2015563 | Pass w/ Conditions | 1 | `PRIORITY FOUNDATION 7-38-010` |
+| 2015566 | Pass w/ Conditions | 1 | `PRIORITY FOUNDATION VIOLATION 7-38-010` |
+| 2015567 | Fail | 1 | `PRIORITY FOUNDATION VIOLATION` |
+| 2015568 | Pass | 0 | item 55, floors with dirt and debris |
+| 2015573 | Pass | 0 | item 47, washbowls in the toilet room |
+
+Every positive carries an evidence span naming the marker that produced it,
+which is enforced by an error-severity check rather than left to inspection.
+
+### 19.7 Output
+
+| file | rows | bytes |
+|---|---|---|
+| `inspection_targets_20260816T122821Z.parquet` | 313,624 | 3,693,450 |
+| `manifest_inspection_targets_20260816T122821Z.json` | — | 5,544 |
+
+The manifest pins both input checksums, the definition version, every
+eligibility parameter and all eighteen check results.
+
+### 19.8 What changed during implementation
+
+Unlike Component 2, no rule had to be revised after seeing the real output. The
+investigation in §1–18 anticipated the cases, and the counts reconciled with the
+profiling exactly on the first build. The one thing that changed was a test
+expectation, not code: an early scenario counted eligible *inspections* where the
+unit is eligible *rows*, which the same-day collapse makes different.
