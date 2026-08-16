@@ -18,6 +18,8 @@ Commands
     sentinel resolve --dry-run --report        resolve without writing anything
     sentinel build-target                      construct the prediction target
     sentinel build-target --dry-run --report   build without writing anything
+    sentinel build-features                    construct the as-of feature table
+    sentinel build-features --dry-run --report build without writing anything
 """
 
 from __future__ import annotations
@@ -31,6 +33,14 @@ from sentinel import __version__
 from sentinel.config import Settings, load_settings
 from sentinel.entity import validate
 from sentinel.entity.resolve import EntityResolutionError, resolve_establishments, summarize
+from sentinel.features import validate as feature_validate
+from sentinel.features.build import (
+    FeatureConstructionError,
+    build_features,
+)
+from sentinel.features.build import (
+    summarize as summarize_features,
+)
 from sentinel.ingest.food_inspections import ingest_food_inspections
 from sentinel.ingest.socrata import SocrataError
 from sentinel.logging_setup import configure_logging
@@ -49,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="sentinel",
         description=(
             "Sentinel - risk-prioritized food inspection scheduling "
-            "(ingestion, entity resolution and target construction)."
+            "(ingestion, entity resolution, target and feature construction)."
         ),
     )
     parser.add_argument("--version", action="version", version=f"sentinel {__version__}")
@@ -188,6 +198,43 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", help="Construct and validate, but write nothing."
     )
     build_target.add_argument(
+        "--report", action="store_true", help="Print the full validation report, not only failures."
+    )
+
+    # --- build-features ---------------------------------------------------
+    build_feat = subparsers.add_parser(
+        "build-features",
+        parents=[common],
+        help="Construct as-of historical features for each prediction opportunity.",
+    )
+    build_feat.add_argument(
+        "--parquet",
+        type=Path,
+        metavar="PATH",
+        help="Raw Parquet. Defaults to the most recent raw file.",
+    )
+    build_feat.add_argument(
+        "--assignments",
+        type=Path,
+        metavar="PATH",
+        help="Component 2 assignments. Defaults to the most recent.",
+    )
+    build_feat.add_argument(
+        "--targets",
+        type=Path,
+        metavar="PATH",
+        help="Component 3 targets. Defaults to the most recent.",
+    )
+    build_feat.add_argument(
+        "--output-dir",
+        type=Path,
+        metavar="DIR",
+        help="Destination directory for the feature table and manifest.",
+    )
+    build_feat.add_argument(
+        "--dry-run", action="store_true", help="Construct and validate, but write nothing."
+    )
+    build_feat.add_argument(
         "--report", action="store_true", help="Print the full validation report, not only failures."
     )
 
@@ -346,6 +393,52 @@ def _run_build_target(args: argparse.Namespace, settings: Settings) -> int:
     return 1 if failed else 0
 
 
+def _run_build_features(args: argparse.Namespace, settings: Settings) -> int:
+    parquet_path = args.parquet
+    assignments_path = args.assignments
+    targets_path = args.targets
+    try:
+        if parquet_path is None:
+            parquet_path = duckdb_queries.latest_parquet(settings.food_inspections_raw_dir)
+            logger.info("Using most recent raw file: %s", parquet_path)
+        if assignments_path is None:
+            assignments_path = duckdb_queries.latest_parquet(
+                settings.entity_resolution_interim_dir,
+                prefix="establishment_assignments_",
+            )
+            logger.info("Using most recent assignments: %s", assignments_path)
+        if targets_path is None:
+            targets_path = duckdb_queries.latest_parquet(
+                settings.target_interim_dir, prefix="inspection_targets_"
+            )
+            logger.info("Using most recent targets: %s", targets_path)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return 1
+
+    try:
+        result = build_features(
+            settings,
+            parquet_path=parquet_path,
+            assignments_path=assignments_path,
+            targets_path=targets_path,
+            output_dir=args.output_dir,
+            dry_run=args.dry_run,
+        )
+    except (FileNotFoundError, FeatureConstructionError, ValueError) as exc:
+        logger.error("Feature construction failed: %s", exc)
+        return 1
+
+    print(summarize_features(result))
+
+    failed = feature_validate.has_failures(result.checks)
+    if args.report or failed:
+        print(feature_validate.format_report(result.checks))
+    # A failed check means a feature may contain future information, which is
+    # the one defect that would silently invalidate every downstream result.
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -361,6 +454,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_resolve(args, settings)
     if args.command == "build-target":
         return _run_build_target(args, settings)
+    if args.command == "build-features":
+        return _run_build_features(args, settings)
 
     # argparse enforces `required=True` on the subparser, so this is defensive
     # only. parser.error() exits with status 2.
