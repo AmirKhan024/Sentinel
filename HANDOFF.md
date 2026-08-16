@@ -3,34 +3,51 @@
 For a fresh Claude Code session picking this repository up. Read `MEMORY.md`
 first, then `STATUS.md`, then this file.
 
-**Last session completed Component 3 — Target Construction.**
-**Next task: Component 4 — As-of Feature Engineering.**
+**Last session completed Component 4 — As-of Feature Engineering.**
+**Next task: Component 5 — Temporal Evaluation.**
+
+---
+
+## 0. The one warning that matters most
+
+```
+TARGET   = what the inspection found          (Component 3, future information)
+FEATURES = what was knowable before it        (Component 4, strictly earlier)
+```
+
+Component 4 guarantees that **no feature contains information from on or after
+its reference date**. That guarantee is necessary and **not sufficient**.
+
+An evaluation that splits rows **randomly** trains on the future even when every
+feature is correct: a 2019 row and a 2024 row land in the same fold, and the
+model is scored on establishments it has already learned from. **Component 5 must
+split chronologically.** See §9.
 
 ---
 
 ## 1. What was completed
 
-Component 3 defines what Sentinel predicts. It turns inspection history into a
-precise, leakage-safe, auditable label, following the same discipline as
-Components 1 and 2: investigate → document → design → implement → test.
+Component 4 builds 26 historical features for each of Component 3's 57,727
+prediction opportunities, following the same discipline as Components 1–3:
+investigate → document → design → implement → test.
 
-1. **`scripts/profile_target.py`** — 31 read-only DuckDB profiles joined to
-   Component 2's assignments, run in 10.5 s before any target code was written.
-2. **`docs/analysis/target_construction_findings.md`** — the measurements and the
-   design decision each one forced, written *before* the implementation.
-3. **`src/sentinel/target/`** — six modules: violation parsing and severity
-   classification, eligibility gates and labelling, validation, output writing,
-   models, orchestration.
-4. **`sentinel build-target`** CLI with `--dry-run` and `--report`.
-5. **201 new tests** (342 → 543), including 12 regression cases copied verbatim
-   from real inspections.
-6. **Contract and ADRs** — `docs/data_contracts/inspection_targets.md`,
-   ADR 0008 (the target definition), ADR 0009 (the code-era boundary).
-7. **Corrected `docs/data_contracts/food_inspections_raw.md`**, which documented
-   four `results` values where the data has seven.
+1. **`scripts/profile_features.py`** — 21 read-only DuckDB profiles joining all
+   three upstream artifacts, run in 3 s before any feature code.
+2. **`docs/analysis/as_of_feature_engineering_findings.md`** — the measurements
+   and the decision each one forced, written *before* the implementation.
+3. **`src/sentinel/features/`** — five modules: declared feature specifications,
+   the range join carrying the temporal boundary, validation, writer,
+   orchestration.
+4. **`sentinel build-features`** CLI with `--dry-run` and `--report`.
+5. **202 new tests** (543 → 745), including a 12-test leakage suite in its own
+   file.
+6. **Contract and ADRs** — `docs/data_contracts/as_of_features.md`, ADR 0010 (the
+   boundary and construction), ADR 0011 (the processed layer).
+7. **First use of `data/processed/`**, with a written criterion for what belongs
+   there.
 
-**No new dependencies.** Parsing is regular expressions over stdlib; no LLM, no
-embeddings, no fuzzy matching.
+**No new dependencies.** DuckDB for the range join, Polars for the frame, both
+already present.
 
 ---
 
@@ -38,266 +55,256 @@ embeddings, no fuzzy matching.
 
 ```text
 src/sentinel/
-  cli.py                     ingest | query | resolve | build-target
-  config.py                  + target_interim_dir
-  manifest.py                generic sha256 / read / write helpers
-  ingest/                    Component 1
-  query/                     DuckDB over raw Parquet
-  entity/                    Component 2
-  target/                    NEW: Component 3
-    models.py                Severity, TargetStatus, CodeEraPhase,
-                             CODE_ERA_START, TARGET_DEFINITION_VERSION
-    violations.py            split / parse / classify + narrative exclusions
-    construct.py             eligibility gates, labelling, same-day collapse
-    validate.py              12 error checks + 6 distributional notes
-    writer.py                TARGETS_SCHEMA, TARGET_EVENT_COLUMNS
-    build.py                 orchestration; the only module doing I/O
-scripts/profile_target.py    NEW: 31 read-only profiles
-tests/                       543 passing, 3 live deselected
-  fixtures/target_cases.py   NEW: 12 real regression cases as literal Python
-docs/analysis/               + target_construction_findings.md
-docs/data_contracts/         + inspection_targets.md (raw contract corrected)
-docs/decisions/              9 ADRs (0008, 0009 new)
-data/interim/target/         inspection_targets_*.parquet + manifest (committed)
+  cli.py                 ingest | query | resolve | build-target | build-features
+  config.py              + features_processed_dir
+  manifest.py            generic sha256 / read / write helpers
+  ingest/ query/ entity/ target/          Components 1-3
+  features/              NEW: Component 4
+    definitions.py       FEATURE_SPECS, WINDOW_DAYS, NullRule, Family
+    historical.py        priority_flags + the range join (THE boundary)
+    validate.py          15 error checks incl. temporal_boundary_holds
+    writer.py            output_schema derived from the specs
+    build.py             build_features; the only module doing I/O
+    models.py            FeatureManifest, ValidationCheck
+scripts/profile_features.py   NEW: 21 read-only profiles
+tests/                        745 passing, 3 live deselected
+  test_features_leakage.py    NEW: the safety wall
+docs/analysis/                + as_of_feature_engineering_findings.md
+docs/data_contracts/          + as_of_features.md
+docs/decisions/               11 ADRs (0010, 0011 new)
+data/processed/features/      as_of_features_*.parquet + manifest (committed)
 ```
 
 Branch `main`, working tree clean.
 
 ---
 
-## 3. The target definition
+## 3. The feature table
 
-**Plain English.** For each establishment-date on which a routine canvass
-happened, the target is 1 if that day's canvassing found at least one **Priority
-or Priority Foundation** violation, and 0 if it found none.
+| | |
+|---|---|
+| path | `data/processed/features/as_of_features_<stamp>.parquet` |
+| grain | one row per Component 3 **eligible** target row |
+| primary key | `target_inspection_id` |
+| natural key | `(establishment_id, inspection_date)` |
+| rows | **57,727** |
+| columns | **33** = 3 keys + 26 features + 2 labels + 2 provenance |
 
-**Logical form.**
-
+```text
+keys        establishment_id · inspection_date · target_inspection_id
+features    the 26 below (FEATURE_COLUMNS)
+labels      target · target_status
+provenance  code_era_phase · feature_definition_version
 ```
-target(e, d) = 1  ⟺  ∃ i ∈ Canvasses(e, d) : ∃ v ∈ Violations(i) :
-                          severity(v) ∈ {PRIORITY, PRIORITY_FOUNDATION}
-```
 
-**Example.** Establishment `EST-00000068356` was canvassed on 2019-03-08. The
-inspector recorded `3. MANAGEMENT … - Comments: NO EMPLOYEE HEALTH POLICY
-ON-PREMISES. PRIORITY FOUNDATION 7-38-010.` → `target = 1`, with `evidence` set
-to the matched span. The `results` column said `Pass w/ Conditions`.
-
-### Prediction unit
-
-**One target row = one (establishment, date) on which at least one eligible
-canvass occurred.** Not one row per inspection — 530 establishment-dates carry
-more than one eligible canvass and 160 of the underlying days disagreed, so they
-collapse with OR. "Inspect E on date D" is a single scheduling decision.
-
-### Reference event and target event
-
-They are the **same inspection**. The canvass *is* the prediction event, and
-`inspection_date` is the as-of boundary — the instant a scheduler would decide
-whether to send an inspector.
-
-A "predict the next canvass" formulation was rejected: it discards every
-establishment's most recent canvass (15,148 rows) and attaches labels to events a
-median of 377 days later (IQR 306–511). See ADR 0008.
-
-### Positive / negative / excluded
-
-| class | definition | rows |
-|---|---|---|
-| positive (`1`) | ≥1 Priority or Priority Foundation violation found | 30,316 |
-| negative (`0`) | eligible, text interpretable, no priority violation | 27,411 |
-| excluded (`NULL`) | an eligibility gate failed | 255,818 |
-| unknown (`NULL`) | result and text contradict each other | 79 |
-
-Negatives are not empty rows: 22,437 recorded Core-only violations, 4,974 were
-clean passes with no text.
-
-### Eligibility, in evaluation order
-
-| gate | rule | excluded |
-|---|---|---|
-| era | `inspection_date >= 2018-07-01` | 172,879 |
-| type | `upper(trim(inspection_type)) == 'CANVASS'` | 70,848 |
-| result | `results ∈ {Pass, Pass w/ Conditions, Fail}` | 12,091 |
-| text | violation text interpretable | 79 |
-
-### Temporal semantics
-
-There is no lookahead. The target event is the canvass on `inspection_date`, and
-the label is derived from that inspection's own violation text. Chronology is
-used only to group same-day canvasses — never to find a later event, and never
-to compute a historical quantity.
+Component 3's outcome columns (`results`, `evidence`, `has_priority`,
+`n_*_entries`, `inspection_type`) are **not present at all** — a check fails the
+build if any appears.
 
 ---
 
-## 4. Verified data findings
+## 4. Temporal semantics
 
-Raw sha256 `7d3c4069340a68d197204c6cca9fca6399c6565bc3668760f145f43cd377ad38`.
+> **A feature for the row at `inspection_date = d` may use only records dated
+> STRICTLY BEFORE `d`.**
+
+**Why `<` and not `<=`, settled by measurement:** `inspection_date` has exactly
+**one** distinct time component across all 314,245 rows (`T00:00:00.000`). It is
+a date, not a timestamp, so same-day records **cannot be ordered**. At reference
+dates there are 1,075 same-day `License`, **43 same-day `Canvass
+Re-Inspection`** and 42 same-day `Complaint` records — and a re-inspection exists
+*because* an inspection failed, so it provably follows the canvass being
+predicted.
+
+An inspection dated on the reference date is therefore **never** history,
+including the target's own contributing inspections.
+
+**Cost, accepted:** up to 1,075 genuinely-prior licence inspections are
+discarded. Component 4 exists to prevent leakage, so it fails toward exclusion.
+
+**Observable proof:** `days_since_last_canvass` has a minimum of **1** and
+contains **no zeros**. A zero-day recency is unconstructable.
+
+**Implementation:** one range join, one condition, one place.
+
+```sql
+LEFT JOIN history h
+  ON  h.establishment_id = t.establishment_id
+  AND h.inspection_date  <  t.inspection_date
+```
+
+`LEFT JOIN` so the 401 history-less rows survive rather than vanish.
+
+---
+
+## 5. The 26 features
+
+Full definitions in `docs/data_contracts/as_of_features.md` §5. Summary:
+
+**Canvass history (8)** — the routine series, comparable to the target:
+`prior_canvass_count`, `prior_canvass_count_code_era`,
+`prior_canvass_inspected_count`, `days_since_last_canvass`,
+`prior_canvass_fail_count`, `prior_canvass_pass_w_conditions_count`,
+`prior_canvass_fail_rate`, `fail_at_last_canvass`.
+
+**Priority history (4)** — code-era canvasses only, because Priority did not
+exist before 2018-07-01: `prior_canvass_priority_count`,
+`prior_canvass_priority_foundation_count`, `prior_canvass_priority_rate`,
+`priority_at_last_canvass`.
+
+**Windows (6)** — half-open `[d − N, d)` for N ∈ {365, 730, 1095}:
+`canvasses_last_{N}d`, `canvass_priority_events_last_{N}d`.
+
+**All-type context (5)**: `prior_inspection_count_any_type`,
+`days_since_any_inspection`, `prior_complaint_count`, `prior_reinspection_count`,
+`prior_license_inspection_count`.
+
+**Tenant change (2)**: `name_changed_since_last_canvass`,
+`prior_canvass_count_current_name`.
+
+**Observation (1)**: `days_since_first_inspection`.
+
+### Missing values — four rules
+
+| kind | rule |
+|---|---|
+| counts | never NULL; `0` = "none observed" |
+| recency (`days_since_*`) | **NULL** when the event never happened |
+| rates | **NULL** when the denominator is 0 |
+| at-last flags | **NULL** when there is no prior event |
+
+Every event count is emitted **beside its inspection count**, so `0` is legible:
+`canvass_priority_events_last_365d = 0` next to `canvasses_last_365d = 0` means
+"not inspected", next to `= 2` means "inspected twice and clean".
+
+---
+
+## 6. Leakage protections
+
+1. **One boundary, one place** — every feature is an aggregate over the same
+   restricted row set.
+2. **Independently re-derived** — `temporal_boundary_holds` recomputes the latest
+   contributing date per row from a *separate* query. A check that reuses the
+   aggregation only proves it agrees with itself.
+3. **Whole table, not a sample** — that check runs on all 57,727 rows. The
+   project spec suggests 500 random rows in CI; this dominates it at no cost.
+4. **No all-history aggregate exists** — the pipeline has no establishment-level
+   intermediate that could be merged onto every row.
+5. **Four dedicated regression tests** in `tests/test_features_leakage.py`:
+   future insertion, future mutation, target self-exclusion, same-day exclusion —
+   plus a paired test proving a record one day earlier *is* counted, so the
+   boundary is exclusive rather than absent.
+6. **`null_rules_hold_exactly`** — asserts each feature is NULL *exactly* when
+   its declared rule says so, not merely that nulls exist.
+7. **No feature selected by accuracy** — there is no model; features are
+   justified by domain reasoning only.
+
+---
+
+## 7. Verified full-data results
 
 | measurement | value |
 |---|---|
-| inspections → target rows → eligible | 314,245 → 313,624 → **57,727** |
-| positive / negative | 30,316 / 27,411 (**52.52%**) |
-| establishments with ≥1 eligible row | 15,144 |
-| runtime | 25 s |
-| `results` distinct values | **7**, not the 4 documented |
-| code-era cutover | **2018-07-01**, clean (June: 0 new / 415 old; July: 761 / 0) |
-| priority presence: Fail / PwC / Pass | 99.4% / **97.9%** / 0.45% |
-| violation number → severity | **not predictive** (item 10: 42/11/47) |
-| priority markers with no citation code | 21,281 (all genuine) |
-| entries with no severity label | 72% |
-| narrative exclusion effect | 74 entries, **10 inspection labels** |
-| OOB followed by a later inspection | 24.9%, median 273 days |
-| positive rate drift | 87.6% (2018 H2) → 39.1% (2026) |
+| eligible target rows in → feature rows out | 57,727 → **57,727**, 0 unmatched |
+| features / columns | 26 / 33 |
+| runtime | **15.6 s** |
+| no history at all | 401 (0.69%) |
+| no prior canvass | 5,615 (9.73%) |
+| no prior code-era canvass | 14,162 (24.53%) |
+| after a business-name change | 1,962 (3.40%) |
+| `prior_canvass_count` | mean 7.86, p50 7, max 247 |
+| `days_since_last_canvass` | **min 1**, mean 485, p50 386, max 5,612 |
+| `prior_canvass_fail_rate` | mean 0.218, p50 0.167 |
+| `prior_canvass_priority_rate` | mean 0.575, p50 0.500 |
+| `canvasses_last_365d` = 0 | 35,781 (62.0%) |
+| target balance | 27,411 / 30,316 — **identical to Component 3** |
+
+All 15 error checks pass. Rebuilding and a seeded row shuffle both reproduce
+identical values.
 
 ---
 
-## 5. Tests
+## 8. Tests
 
 ```bash
-uv run pytest                       # 543 passed, 3 deselected
+uv run pytest                       # 745 passed, 3 deselected
 uv run pytest -m live               # 3 live tests, hits the real API
 uv run ruff check .                 # All checks passed
-uv run ruff format --check .        # 74 files already formatted
-uv run mypy src/sentinel scripts    # no issues in 31 source files
+uv run ruff format --check .        # 91 files already formatted
+uv run mypy src/sentinel scripts    # no issues in 39 source files
+uv run sentinel build-features --dry-run --report
 ```
 
-Determinism is asserted in unit tests and verified separately on the full
-snapshot: rebuilding reproduces the committed table exactly, and building from a
-seeded random permutation of all 314,245 input rows produces identical labels.
-
 ---
 
-## 6. Known limitations — be honest about these
+## 9. Next task: Component 5 — Temporal Evaluation
 
-1. **52% of the dataset cannot be labelled** (172,879 rows predate 2018-07-01).
-   They remain usable as *features*.
-2. **The base rate drifts from 87.6% to 39.1%.** Flagged via `code_era_phase`,
-   not corrected.
-3. **The narrative-exclusion list is judgement** — four patterns, 74 entries, 10
-   labels. Enumerated in the contract so it can be argued with.
-4. **8 `Pass w/ Conditions` rows are negative** where the result implies
-   otherwise, because the parser stays independent of `results`.
-5. **Inspector write-up variation is unmeasurable.** A priority violation found
-   but not labelled is a false negative and the open data has no ground truth.
-   **NOT VERIFIED.**
-6. **Severity within positive is not represented.** One priority violation and
-   twelve give the same label.
-7. **`Canvass Re-Inspection` (16,998 code-era rows) and complaint inspections are
-   excluded** — a deliberate scope restriction.
-8. **CI has still never run. NOT VERIFIED.**
+Build an honest way to measure whether a ranking is good, **before** any model
+exists. Scope is the evaluation harness only — no models, no calibration, no
+SHAP, no scheduling.
 
----
+The project spec is emphatic that this comes before modelling and must never be
+cut: "the evaluation harness, the inspector decomposition, calibration, and the
+fairness audit — those four are the project."
 
-## 7. Important decisions
+### Split chronologically, never randomly
 
-* **ADR 0008** — the target definition. Why not `results == 'Fail'` (would
-  mislabel 16,261), why not any-violation, why not a count, why not the
-  next-canvass formulation, why re-inspections and complaints are excluded.
-* **ADR 0009** — the 2018-07-01 boundary, why the adoption period is flagged
-  rather than dropped, and that pre-2018 rows remain usable as features.
-* Output goes to `data/interim/target/`, not `processed/`: ADR 0005 reserves
-  processed for model-ready tables and this is labels only.
-* `target` is a nullable `Int8`, not a `Boolean`, because null is a meaningful
-  third state.
+Rolling-origin backtest: train on a period, calibrate on the next, test on the
+one after, roll forward. Report mean ± SD across folds, not one number from one
+split. A single train/test split invites "how do you know that isn't luck?"
 
----
+### What the data already tells you
 
-## 8. What must NOT be changed
+* **The base rate drifts hard**: 87.6% positive in 2018 H2 → 39.1% in 2026. Any
+  evaluation pooling across time measures the drift rather than the model.
+  `code_era_phase` marks the 2,829 adoption-period rows for optional holdout.
+* **The canvass cycle is a 358-day median**, so a test window shorter than a year
+  contains mostly establishments that will not reappear.
+* **57,727 labelled rows** spanning 2018-07 to 2026-08. Folds are not free.
+* **`days_since_any_inspection` partly encodes scheduling policy** (p25 of 9 days
+  is the re-inspection pattern), so build the with/without ablation into the
+  harness rather than bolting it on later.
 
-**Component 1** (still binding): `$order=inspection_id` on every paged request;
-raw Parquet is all `Utf8`; `data/raw/` is append-only; non-retryable 4xx raise;
-live tests deselected by default; raw data never committed.
+### Investigate before coding
 
-**Component 2** (still binding): only identity columns reach the matcher; the
-assignments table carries no dates, counts or outcomes; every non-licence merge
-requires address equivalence; licence inequality is never evidence against;
-resolution stays deterministic; `establishment_id` is snapshot-scoped.
+* **State the estimand first.** Only establishments *actually inspected* in a
+  window can be re-ordered, so this measures re-ordering, not counterfactual
+  coverage. Say it before building, not after being asked.
+* What is the real inspection capacity in the data? `precision@k` needs a
+  defensible `k`.
+* How are the five reference schedules built from this table — optimal, model,
+  business-as-usual, random, worst?
+* Does time-invariance hold? The spec's Finding 2 says it does not for
+  temperature-related violations. That is a measurement, not an assumption.
 
-**Component 3:**
+### What must NOT be changed
 
-1. **The label is read from the violation text, never from `results`.** Using the
-   result would make the target circular.
-2. **`Out of Business`, `No Entry`, `Not Ready`, `Business Not Located` are
-   ineligible, not negative.** No inspection happened.
-3. **Eligibility starts 2018-07-01.** Before it the target is undefined.
-4. **One row per (establishment, date), target = OR.**
-5. **Every positive carries an `evidence` span** — enforced by a check that fails
-   the build.
-6. **The violation number is never used to classify severity.**
-7. **`UNCLASSIFIED` does not mean "Core".** 72% of entries carry no label.
-8. Do not change a rule without re-reading
-   `docs/analysis/target_construction_findings.md` and bumping
-   `TARGET_DEFINITION_VERSION`.
+**Components 1–3 invariants** (all still binding): `$order=inspection_id` on
+every paged request; raw is all-`Utf8` and append-only; only identity columns
+reach the entity matcher; licence inequality is never evidence against a match;
+the target label is read from violation text, never from `results`; eligibility
+starts 2018-07-01; `Out of Business` is ineligible, not negative.
 
----
+**Component 4 invariants:**
 
-## 9. Next task: Component 4 — As-of Feature Engineering
+1. **A feature may use only records dated strictly before its reference date.**
+2. **The boundary is `<`, not `<=`** — dates carry no time component.
+3. **One range join carries the condition**, and validation re-derives it
+   independently. Never `groupby(establishment_id)` then merge.
+4. **The four missing-value rules**, and the pairing convention that makes a `0`
+   legible.
+5. **Priority features use code-era canvasses only** and are NULL for the 24.5%
+   without one.
+6. **`FEATURE_COLUMNS` is the complete set of model inputs.** `target`,
+   `target_status`, `inspection_date` and `code_era_phase` are not features —
+   `inspection_date` is a legitimate *split* key and `code_era_phase` a
+   legitimate *stratification* variable, but neither is a predictor.
+7. Do not change a feature without re-reading the findings document and bumping
+   `feature_definition_version`.
 
-Build the information a scheduler actually had **before** each inspection.
-Scope is features only — no models, no calibration, no evaluation framework, no
-scheduling.
-
-### ⚠ The leakage rule — read this twice
-
-Component 3 emits one row per (establishment, date). **`inspection_date` is the
-as-of boundary. A feature for that row may use only information dated strictly
-before that date.**
-
-**Never use as features** — these describe the outcome:
-
-```
-target                          results
-has_priority                    evidence
-has_priority_foundation         n_priority_entries
-n_violation_entries             n_priority_foundation_entries
-```
-
-The set is enumerated in `sentinel.target.writer.TARGET_EVENT_COLUMNS` and
-asserted by a test, so you can check it programmatically.
-
-**Also never use:** any inspection dated on or after `inspection_date` for that
-row, any aggregate computed over an establishment's whole history, and
-`code_era_phase` as a risk predictor (it is a stratification variable describing
-the regulatory regime, not a property of the establishment).
-
-**Why Component 3 was allowed to look at the target event and Component 4 is
-not:** Component 3 was *constructing* the label, so the outcome is what it is
-defined from. Component 4 constructs what was knowable *before* the outcome
-existed. Same row, two different time positions.
-
-**A useful non-obvious permission:** pre-2018 inspections are perfectly usable as
-features. The era boundary constrains what can be *labelled*, not what can be
-*known*. A 2014 inspection is legitimate history for a 2022 target row.
-
-### Investigate before coding — the pattern has worked twice
-
-Components 2 and 3 each had multiple planned decisions reversed by measurement.
-Expect the same. Add profiles under `scripts/` and write a findings document
-before designing the feature set.
-
-Questions the data should answer:
-
-1. **How much history does a target row actually have?** Distribution of prior
-   inspections at each as-of date; how many rows have none at all. This bounds
-   what any history feature can do.
-2. **How should the pre-2018 era contribute?** Its violation vocabulary differs,
-   so "prior priority violations" is undefined there while "prior failures" is
-   not. Decide explicitly rather than letting nulls decide.
-3. **Does days-since-last-inspection encode risk or scheduling policy?**
-   Chicago already inspects riskier establishments more often (median canvass gap
-   377 days, IQR 306–511). A recency feature may be learning the city's existing
-   policy rather than the establishment's state — worth measuring and documenting
-   before including it.
-4. **Do features span a tenant change?** Component 2 defines an establishment as
-   a physical premises, so history can cross a change of owner and cuisine.
-   `n_names` and `n_licenses` on the establishments table let you detect it.
-5. **How stable are establishment attributes over time** (`facility_type`,
-   `risk`, zip, geography)? Component 2 measured `facility_type` at 99.5% stable
-   *per licence*, which is not the same as per establishment.
-6. **Is `risk` usable?** It is a city-assigned risk category and may itself be
-   derived from inspection history, which would make it a partial leak of the
-   very thing being predicted. Profile it before trusting it.
+**Do not add features in Component 5.** If one is missing it belongs in
+Component 4, behind a bumped definition version. And do not select features by
+test-set performance — that is leakage by another route.
 
 ### How to join
 
@@ -305,20 +312,15 @@ Questions the data should answer:
 import duckdb
 
 duckdb.sql("""
-    SELECT t.establishment_id, t.inspection_date, t.target
-    FROM read_parquet('data/interim/target/inspection_targets_*.parquet') t
-    WHERE t.target_status = 'eligible'
+    SELECT * FROM read_parquet('data/processed/features/as_of_features_*.parquet')
 """).show()
 ```
 
-Then, for each row, gather prior inspections from the raw snapshot joined to
-Component 2's assignments, filtered to `inspection_date < <the row's date>`.
-
-**Do not re-derive identity or labels.** Component 2 owns `establishment_id`;
-Component 3 owns `target`.
+Everything needed to train and evaluate is on that one table. Identity is
+Component 2's, labels are Component 3's, features are Component 4's — join, do
+not recompute.
 
 ### Reminder
 
-**One component at a time.** Component 4 is as-of feature engineering only. No
-models, no XGBoost, no calibration, no temporal evaluation framework, no
-OR-Tools, no LangGraph, no frontend.
+**One component at a time.** Component 5 is the evaluation harness only. No
+XGBoost, no calibration, no SHAP, no OR-Tools, no LangGraph, no frontend.

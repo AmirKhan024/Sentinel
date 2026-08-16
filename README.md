@@ -14,7 +14,8 @@ implemented. See [STATUS.md](STATUS.md) for the authoritative project state.
 
 ## Current status
 
-**Components 1-3 complete: ingestion, entity resolution, and target construction.**
+**Components 1-4 complete: ingestion, entity resolution, target construction,
+and as-of feature engineering.**
 
 What exists today:
 
@@ -32,16 +33,19 @@ What exists today:
 * **Target construction**: a precise, leakage-safe prediction target -- for each
   establishment-date on which a routine canvass occurred, did that canvass find
   at least one Priority or Priority Foundation violation?
-* 543 unit and integration tests with mocked HTTP, plus an opt-in live smoke
+* **As-of feature engineering**: 26 historical features per prediction
+  opportunity, each computed strictly from inspections dated *before* that
+  inspection, with the boundary enforced in one place and re-checked on every row.
+* 745 unit and integration tests with mocked HTTP, plus an opt-in live smoke
   test.
 
-Nothing else. No features, no models, no scheduling.
+Nothing else. No models, no evaluation framework, no scheduling.
 
 ---
 
 ## Architecture
 
-Three components, one path from the API to a labelled prediction target:
+Four components, one path from the API to a model-ready training table:
 
 ```text
 Chicago Data Portal (Socrata SODA 2.1)
@@ -118,7 +122,40 @@ Chicago Data Portal (Socrata SODA 2.1)
         data/interim/target/
           inspection_targets_<UTC>.parquet         313,624 rows
           manifest_inspection_targets_<UTC>.json
+
+
+        ---- Component 4: as-of feature engineering --------------------
+
+        raw Parquet + assignments + targets
+                │
+                ▼
+        one range join, one temporal condition    features/historical.py
+                │  h.inspection_date < t.inspection_date
+                │  strictly before, never same-day
+                ▼
+        26 features in six families               features/definitions.py
+                │  canvass history · priority history · windows
+                │  context · tenant change · observation
+                ▼
+        validate: boundary re-derived per row     features/validate.py
+                │
+                ▼
+        data/processed/features/
+          as_of_features_<UTC>.parquet             57,727 rows x 33 columns
+          manifest_as_of_features_<UTC>.json
 ```
+
+The **as-of rule** is the whole of Component 4: a feature for the row at
+`inspection_date = d` may use only records dated **strictly before** `d`. The
+boundary is exclusive because `inspection_date` carries no time component in this
+dataset, so same-day records cannot be ordered — and 43 same-day canvass
+re-inspections at reference dates provably happened *after* the canvass they
+follow. Observable consequence: `days_since_last_canvass` has a minimum of 1 and
+contains no zeros.
+
+Reasoning in
+[`docs/analysis/as_of_feature_engineering_findings.md`](docs/analysis/as_of_feature_engineering_findings.md)
+and [ADR 0010](docs/decisions/0010-as-of-feature-construction.md).
 
 The **target** is: for each establishment-date on which a routine canvass
 occurred, did that canvass find at least one **Priority or Priority Foundation**
@@ -328,6 +365,34 @@ duckdb.sql("""
 
 ---
 
+### Building the as-of feature table
+
+```bash
+# build from the latest raw snapshot, assignments and targets
+uv run sentinel build-features
+
+# construct and validate without writing anything
+uv run sentinel build-features --dry-run --report
+```
+
+Exits non-zero if a validation check fails — including the temporal invariant,
+which is re-derived independently and checked on every row. Takes about 15
+seconds on the full snapshot.
+
+```python
+import duckdb
+
+duckdb.sql("""
+    SELECT establishment_id, inspection_date,
+           prior_canvass_count, days_since_last_canvass,
+           prior_canvass_priority_rate, target
+    FROM read_parquet('data/processed/features/as_of_features_*.parquet')
+    LIMIT 5
+""").show()
+```
+
+---
+
 ## Output
 
 Every ingestion run writes two files into `data/raw/food_inspections/`:
@@ -350,8 +415,12 @@ Parquet files are gitignored; manifests are committed, so the repository keeps a
 history of what was ingested without carrying the bulk data.
 
 Entity resolution writes three tables plus its own manifest under
-`data/interim/entity_resolution/`, and target construction writes one table plus
-a manifest under `data/interim/target/`, all following the same rules. The full schemas,
+`data/interim/entity_resolution/`, target construction writes one table plus a
+manifest under `data/interim/target/`, and feature engineering writes the
+model-ready table under `data/processed/features/` — all following the same
+rules. [ADR 0011](docs/decisions/0011-processed-layer-for-model-ready-tables.md)
+records what makes a table model-ready and therefore eligible for the processed
+layer. The full schemas,
 identifier semantics and stability guarantees are in
 [`docs/data_contracts/establishment_assignments.md`](docs/data_contracts/establishment_assignments.md).
 The short version: `establishment_assignments` maps every `inspection_id` to an
@@ -368,7 +437,7 @@ uv run pytest -v
 uv run pytest -m live         # opt-in: makes one real call to the Chicago API
 ```
 
-543 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
+745 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
 transport layer with `respx`, so real request
 construction, status handling, pagination and retry logic are all exercised
 without touching the network. Live tests are marked and deselected by default,
@@ -398,6 +467,12 @@ src/sentinel/
     manifest.py                ingestion provenance model
   query/
     duckdb_queries.py          DuckDB over the raw Parquet
+  features/                    Component 4: as-of feature engineering
+    definitions.py             FeatureSpec list; the single source of truth
+    historical.py              the range join and the temporal boundary
+    validate.py                checks, incl. the full-table temporal invariant
+    writer.py                  schema derived from the specs
+    build.py                   orchestration (the only module doing I/O)
   target/                      Component 3: target construction
     models.py                  frozen structures + the definition constants
     violations.py              deterministic violation parsing/classification
@@ -418,6 +493,7 @@ src/sentinel/
     resolve.py                 orchestration (the only module doing I/O)
 scripts/profile_entities.py    read-only entity profiling (analysis, not library)
 scripts/profile_target.py      read-only target profiling
+scripts/profile_features.py    read-only history-availability profiling
 tests/                         unit + integration tests; tests/fixtures/ holds
                                real regression cases as literal Python
 data/raw|interim|processed/    data layers; contents gitignored, manifests kept
@@ -431,7 +507,7 @@ docs/decisions/                architecture decision records
 
 ## Project roadmap
 
-Components 1-3 are implemented. Everything below them is **planned, not
+Components 1-4 are implemented. Everything below them is **planned, not
 implemented** — no code for any of it exists in this repository.
 
 | # | Component | Status |
@@ -439,8 +515,8 @@ implemented** — no code for any of it exists in this repository.
 | 1 | Project foundation + Chicago data ingestion | **Implemented** |
 | 2 | Entity resolution | **Implemented** |
 | 3 | Target construction | **Implemented** |
-| 4 | As-of feature engineering | Next |
-| 5 | Temporal evaluation framework | Not implemented |
+| 4 | As-of feature engineering | **Implemented** |
+| 5 | Temporal evaluation framework | Next |
 | 6 | Baseline models | Not implemented |
 | 7 | XGBoost / LightGBM | Not implemented |
 | 8 | Neural baseline | Not implemented |

@@ -9,7 +9,7 @@ see README.md for that and STATUS.md for current state.
 
 ## Working agreement
 
-* **One component at a time.** 21 components are planned; Components 1-3
+* **One component at a time.** 21 components are planned; Components 1-4
   exist. Never implement ahead. If something belongs to a later component,
   write it down as a TODO or an architectural note instead of building it.
 * **No fake completion.** Never claim tests pass, ingestion works, or a schema
@@ -92,6 +92,65 @@ see README.md for that and STATUS.md for current state.
     "Inspect E on date D" is one scheduling decision.
 22. **Never re-derive identity or labels.** Component 2 owns `establishment_id`;
     Component 3 owns `target`.
+
+### Component 4 invariants - the as-of rule is the whole component
+
+23. **A feature for the row at `inspection_date = d` may use only records dated
+    STRICTLY BEFORE d.** Not on or before. An inspection dated on the reference
+    date is never history, including the target's own.
+24. **The boundary is `<` because dates carry no time component.** All 314,245
+    rows have `T00:00:00.000`, so same-day records cannot be ordered; 43 same-day
+    canvass re-inspections at reference dates provably follow their canvass.
+25. **One range join carries the condition, in one place** (`historical.py`), and
+    `validate.py` re-derives it independently on every row. Never
+    `groupby(establishment_id)` then merge - that is the all-history bug.
+26. **Four missing-value rules**: counts never NULL (0 is a true observation);
+    recency NULL when the event never happened (0 would mean "today"); rates NULL
+    when the denominator is 0; at-last flags NULL when there is no prior event.
+    Every event count is emitted beside its inspection count so a 0 is legible.
+27. **Priority features use code-era canvasses only** and are NULL for the 24.5%
+    of rows with no prior code-era canvass. Absence of evidence, not evidence of
+    absence.
+28. **Priority is classified by Component 3's parser**, never a SQL substring
+    match, so it means the same thing in the label and the feature.
+29. **`FEATURE_COLUMNS` is the complete set of model inputs.** `target`,
+    `target_status`, `inspection_date` and `code_era_phase` are not features.
+30. **Never select features by downstream accuracy.** That is leakage by another
+    route. Justify by domain reasoning and availability only.
+
+---
+
+## Key as-of feature facts (measured 2026-08-16 on the full snapshot)
+
+Detail in `docs/analysis/as_of_feature_engineering_findings.md`.
+
+* **57,727 eligible target rows -> 57,727 feature rows, 0 unmatched, 26
+  features, 33 columns** in 15.6 s. Output in `data/processed/features/`.
+* **`inspection_date` has exactly ONE distinct time component** across all
+  314,245 rows (`T00:00:00.000`). This single measurement settled the boundary.
+* On reference dates there are also 1,075 `License`, **43 `Canvass
+  Re-Inspection`** and 42 `Complaint` records. 2,103 target rows have at least
+  one same-day companion.
+* History is abundant: only **401 rows (0.69%)** are cold-start, but **5,615
+  (9.7%)** have no prior canvass and **14,162 (24.5%)** none in the code era.
+  **80%** have pre-2018 history, which is usable for counts but not for priority.
+* **Canvass cycle: 358-day median** (p25 251, p75 482). So a 365-day window is
+  **empty for 62% of rows**; 730d for 22%, 1095d for 14.3%.
+* **Any-type interval p25 is 9 DAYS** - the re-inspection pattern. This is why
+  `days_since_any_inspection` is labelled policy-encoding context rather than the
+  primary recency.
+* Prior canvasses include **16,517 `Out of Business`** and **13,077 `No Entry`**;
+  they are excluded from outcome denominators. `prior_canvass_fail_rate` has 346
+  more nulls than `days_since_last_canvass` for exactly this reason.
+* **`days_since_last_canvass` min = 1, zero zeros.** A zero-day recency is
+  unconstructable; cheapest proof the boundary works.
+* **15.9%** of target rows sit in a premises that changed name; **1,962** follow
+  a change immediately.
+* Data quality: zero null dates, zero unparseable dates, zero duplicate
+  `inspection_id`.
+* Performance: 2m14s -> 15.6s by materializing the aggregation as a TABLE (not a
+  view) and parsing only code-era violation text. Range join is 793,200 pairs,
+  ~0.1 s; the cost is the Python parser, not the temporal logic.
 
 ---
 
@@ -211,7 +270,7 @@ data/raw/food_inspections/                output: parquet + manifest_*.json
 docs/api/socrata_findings.md              verified API behaviour — read before
                                           touching the client
 docs/data_contracts/food_inspections_raw.md   what a raw file guarantees
-docs/decisions/                           9 ADRs
+docs/decisions/                           11 ADRs
 
 src/sentinel/entity/evidence.py           the match rules. Read the findings
                                           doc before changing any of them.
@@ -233,8 +292,17 @@ scripts/profile_target.py                 31 read-only target profiles
 data/interim/target/                      output: parquet + manifest_*.json
 docs/analysis/target_construction_findings.md   why the target is defined this
                                           way. Read before touching target/.
-docs/data_contracts/inspection_targets.md  the output contract and the
-                                          leakage rules for Component 4
+docs/data_contracts/inspection_targets.md  Component 3 output contract
+
+src/sentinel/features/definitions.py      FEATURE_SPECS: the single source of
+                                          truth for every feature
+src/sentinel/features/historical.py       the range join and THE boundary
+src/sentinel/features/validate.py         temporal_boundary_holds lives here
+scripts/profile_features.py               21 read-only history profiles
+data/processed/features/                  output: parquet + manifest_*.json
+docs/analysis/as_of_feature_engineering_findings.md   why the boundary is `<`
+docs/data_contracts/as_of_features.md     the output contract and the leakage
+                                          rules for Component 5
 ```
 
 ---
@@ -252,9 +320,12 @@ uv run sentinel resolve                       # entity resolution (~45 s)
 uv run sentinel resolve --dry-run --report    # validate, write nothing
 uv run sentinel build-target                  # target construction (~25 s)
 uv run sentinel build-target --dry-run --report
+uv run sentinel build-features                # as-of features (~16 s)
+uv run sentinel build-features --dry-run --report
 uv run python scripts/profile_entities.py     # 36 read-only entity profiles
 uv run python scripts/profile_target.py       # 31 read-only target profiles
-uv run pytest                                 # 543 tests, offline
+uv run python scripts/profile_features.py     # 21 read-only history profiles
+uv run pytest                                 # 745 tests, offline
 uv run pytest -m live                         # 3 live tests, hits the real API
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src/sentinel scripts
@@ -315,6 +386,40 @@ a bare `sentinel ingest` cannot accidentally pull 314k rows.
 10. **Should the target become a count or a severity grade?** `v1` is binary
     presence; a count reflects inspector verbosity as much as risk. Revisitable
     as `v2`.
+11. **Should history reset at a tenant change?** Component 4 exposes the
+    transition as features instead of resetting, diverging from spec §3.3. A
+    reset variant is an ablation, not a redesign.
+12. **Does `days_since_any_inspection` help or just encode scheduling policy?**
+    Emitted so Component 5 can ablate it; unanswerable without a model.
+
+---
+
+## Lessons learned (Component 4)
+
+* **One measurement can settle a design argument.** Whether the boundary is `<`
+  or `<=` looked like a judgement call until a single query showed
+  `inspection_date` has one distinct time component. After that it was not a
+  choice: same-day records are unorderable, so they cannot be history.
+* **Put the temporal condition in exactly one place.** 26 features, one range
+  join. If the predicate were repeated per feature there would be 26 chances to
+  get it wrong, and a reviewer would have to check all of them.
+* **Re-derive the invariant independently rather than trusting the code that
+  produced it.** `validate.py` recomputes the latest contributing date from a
+  separate query. A check that reuses the aggregation only proves the aggregation
+  agrees with itself.
+* **A NULL rendered as 0 is the quiet catastrophe.** 14,162 rows have no
+  code-era history; writing 0 would tell a model a quarter of establishments have
+  a clean priority record. Pair every event count with its inspection count so
+  the difference is visible.
+* **Materialize before validating.** Running dozens of small checks against a
+  VIEW re-executed the whole join each time: 2m14s. As a TABLE: 15.6s, identical
+  output.
+* **Do not parse what cannot exist.** Priority did not exist before 2018-07-01,
+  so pre-code rows need no classification at all - half the parser's work removed
+  by a definition rather than an optimisation.
+* **Resist feature-count inflation.** 26 features, each with a written reason.
+  The measurement that a 365-day window is empty for 62% of rows is a reason to
+  document it, not a reason to add four more windows.
 
 ---
 
