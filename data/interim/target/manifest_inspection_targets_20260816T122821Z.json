@@ -1,0 +1,173 @@
+{
+  "artifacts": [
+    {
+      "bytes": 3693450,
+      "path": "inspection_targets_20260816T122821Z.parquet",
+      "row_count": 313624,
+      "schema": {
+        "code_era_phase": "String",
+        "contributing_inspection_ids": "String",
+        "establishment_id": "String",
+        "evidence": "String",
+        "has_priority": "Boolean",
+        "has_priority_foundation": "Boolean",
+        "inspection_date": "String",
+        "inspection_type": "String",
+        "n_contributing_inspections": "Int32",
+        "n_priority_entries": "Int32",
+        "n_priority_foundation_entries": "Int32",
+        "n_violation_entries": "Int32",
+        "results": "String",
+        "target": "Int8",
+        "target_definition_version": "String",
+        "target_inspection_id": "String",
+        "target_status": "String"
+      },
+      "sha256": "1400d4e91937bd391e13f5a6f37866c2ce2102bcda354cffbd5feb3f899c0dab"
+    }
+  ],
+  "assignments_path": "establishment_assignments_20260816T085729Z.parquet",
+  "assignments_sha256": "9b0e6808ebfc35c5f7cce51634e4eb5a4bd4d2821530b3ef391facfdebdb882a",
+  "built_at": "2026-08-16T12:28:21.721282+00:00",
+  "canvass_type": "CANVASS",
+  "checks": [
+    {
+      "detail": "0 rows reference an establishment_id absent from the Component 2 assignments",
+      "name": "establishment_id_from_component_2",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows reference an inspection_id absent from the raw snapshot",
+      "name": "target_inspection_exists",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 establishment-dates have more than one eligible target row",
+      "name": "one_eligible_row_per_establishment_date",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "314245 inspections represented across target rows, 314245 in the source",
+      "name": "every_inspection_accounted_for",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows have a label without being eligible, or vice versa",
+      "name": "label_present_exactly_when_eligible",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows have a target outside {0, 1}",
+      "name": "target_is_binary",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 eligible rows fall before 2018-07-01, where Priority violations are not defined",
+      "name": "eligible_rows_are_in_the_code_era",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 eligible rows are not routine canvasses",
+      "name": "eligible_rows_are_canvasses",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 eligible rows have a result meaning no inspection occurred",
+      "name": "eligible_rows_describe_a_real_inspection",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 positive rows carry no evidence span, so their label cannot be traced to the violation text",
+      "name": "positives_carry_evidence",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 rows disagree with their own priority flags",
+      "name": "label_matches_priority_flags",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "target definition versions present: ['v1']",
+      "name": "single_target_definition_version",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "30316 of 57727 eligible rows are positive (52.5%)",
+      "name": "positive_rate",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "eligible=57727, ineligible_era=172879, ineligible_result=12091, ineligible_type=70848, unknown_violations=79",
+      "name": "status_breakdown",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "base rate drifts materially across years; Component 5 must account for it",
+      "name": "positive_rate_by_year",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "530 establishment-dates collapsed more than one eligible canvass",
+      "name": "collapsed_multi_canvass_days",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "adoption=2829, stable=54898",
+      "name": "code_era_phase_breakdown",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "code_era_start": "2018-07-01",
+  "code_version": "0.1.0",
+  "collapsed_multi_canvass_days": 530,
+  "component": "target_construction",
+  "eligible_rows": 57727,
+  "inspected_results": [
+    "Fail",
+    "Pass",
+    "Pass w/ Conditions"
+  ],
+  "negative_rows": 27411,
+  "positive_rate": 0.525162,
+  "positive_rate_by_year": {
+    "2018": 0.875574,
+    "2019": 0.773512,
+    "2020": 0.593674,
+    "2021": 0.502925,
+    "2022": 0.465354,
+    "2023": 0.460534,
+    "2024": 0.426011,
+    "2025": 0.392067,
+    "2026": 0.391192
+  },
+  "positive_rows": 30316,
+  "source_path": "food_inspections_20260816T070911Z.parquet",
+  "source_row_count": 314245,
+  "source_sha256": "7d3c4069340a68d197204c6cca9fca6399c6565bc3668760f145f43cd377ad38",
+  "status_counts": {
+    "eligible": 57727,
+    "ineligible_era": 172879,
+    "ineligible_result": 12091,
+    "ineligible_type": 70848,
+    "unknown_violations": 79
+  },
+  "target_definition_version": "v1",
+  "target_rows": 313624
+}
