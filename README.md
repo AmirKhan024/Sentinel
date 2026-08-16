@@ -14,7 +14,7 @@ implemented. See [STATUS.md](STATUS.md) for the authoritative project state.
 
 ## Current status
 
-**Component 1 — Project foundation + Chicago food inspection ingestion. Implemented.**
+**Components 1 and 2 complete: ingestion, and entity resolution.**
 
 What exists today:
 
@@ -22,18 +22,23 @@ What exists today:
 * An explicit, paginating, retrying client for the Chicago Data Portal's
   Socrata API.
 * Raw ingestion of the Food Inspections dataset (`4ijn-s7e5`) into
-  timestamped Parquet files.
-* A JSON manifest recording provenance for every ingestion run.
+  timestamped Parquet files. Verified end-to-end on the full 314,245 rows.
+* A JSON manifest recording provenance for every ingestion and resolution run.
 * A DuckDB query layer for inspecting the raw Parquet.
-* Unit tests with mocked HTTP, plus an opt-in live smoke test.
+* **Entity resolution**: a deterministic, explainable mapping from each
+  inspection to a stable `establishment_id` representing a physical premises,
+  plus an audit table recording why every merge — and every declined merge —
+  was decided the way it was.
+* 342 unit and integration tests with mocked HTTP, plus an opt-in live smoke
+  test.
 
-Nothing else. No entity resolution, no features, no models, no scheduling.
+Nothing else. No targets, no features, no models, no scheduling.
 
 ---
 
 ## Architecture
 
-The whole of Component 1 is one path from the API to a queryable raw file:
+Two components, one path from the API to stable establishment identities:
 
 ```text
 Chicago Data Portal (Socrata SODA 2.1)
@@ -62,7 +67,40 @@ Chicago Data Portal (Socrata SODA 2.1)
                 │
                 ▼
               SQL result
+
+
+        ---- Component 2: entity resolution ----------------------------
+
+        data/raw/food_inspections/*.parquet
+                │  identity columns only; no results/violations/risk/date
+                ▼
+        normalize names, addresses, coordinates   entity/normalize.py
+                │
+                ▼
+        build nodes                               entity/nodes.py
+                │  314,245 rows -> 51,099 distinct identity signatures
+                ▼
+        block on (zip, house), coordinate, licence entity/blocking.py
+                │  every non-licence block requires location agreement
+                ▼
+        evaluate pairs against named rules         entity/evidence.py
+                │  S1-S3 strong · P1-P2 probable · A1-A2 ambiguous · V1-V4 veto
+                ▼
+        union-find + cluster invariants            entity/cluster.py
+                │  deterministic split ladder if an invariant fails
+                ▼
+        data/interim/entity_resolution/
+          establishment_assignments_<UTC>.parquet   inspection_id -> establishment_id
+          establishments_<UTC>.parquet              one row per establishment
+          entity_resolution_edges_<UTC>.parquet     the audit trail
+          manifest_establishment_assignments_<UTC>.json
 ```
+
+An **establishment** is a *physical food-service premises*, not a licence and not
+a business name. Successive tenants at one address are the same establishment
+with a changing name; a mobile-food commissary holding 47 cart permits is one
+establishment. The reasoning is in
+[`docs/analysis/entity_resolution_findings.md`](docs/analysis/entity_resolution_findings.md).
 
 ### Raw stays raw
 
@@ -196,6 +234,38 @@ business logic.
 
 ---
 
+### Resolving establishment identities
+
+```bash
+# resolve the most recent raw snapshot, writing three tables + a manifest
+uv run sentinel resolve
+
+# compute and validate without writing anything, printing the full report
+uv run sentinel resolve --dry-run --report
+
+# resolve a specific file into a specific directory
+uv run sentinel resolve --parquet path/to/raw.parquet --output-dir out/
+```
+
+The command exits non-zero if a structural validation check fails, so broken
+identities stop the pipeline rather than being handed quietly to the next
+component. On the full snapshot it takes about 45 seconds.
+
+To ask why two inspections were or were not treated as the same establishment,
+filter the edges table on their `node_id`:
+
+```python
+import duckdb
+
+duckdb.sql("""
+    SELECT rule_id, tier, same_license, same_addr_key, name_exact, left_name, right_name
+    FROM read_parquet('data/interim/entity_resolution/entity_resolution_edges_*.parquet')
+    WHERE left_node_id = 'N-...' OR right_node_id = 'N-...'
+""").show()
+```
+
+---
+
 ## Output
 
 Every ingestion run writes two files into `data/raw/food_inspections/`:
@@ -217,6 +287,14 @@ Parquet file.
 Parquet files are gitignored; manifests are committed, so the repository keeps a
 history of what was ingested without carrying the bulk data.
 
+Entity resolution writes three tables plus its own manifest under
+`data/interim/entity_resolution/`, following the same rules. The full schemas,
+identifier semantics and stability guarantees are in
+[`docs/data_contracts/establishment_assignments.md`](docs/data_contracts/establishment_assignments.md).
+The short version: `establishment_assignments` maps every `inspection_id` to an
+`establishment_id` and deliberately carries no dates, counts or outcomes, so a
+downstream join cannot pull whole-history information into a training row.
+
 ---
 
 ## Testing
@@ -227,7 +305,8 @@ uv run pytest -v
 uv run pytest -m live         # opt-in: makes one real call to the Chicago API
 ```
 
-Unit tests mock HTTP at the transport layer with `respx`, so real request
+342 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
+transport layer with `respx`, so real request
 construction, status handling, pagination and retry logic are all exercised
 without touching the network. Live tests are marked and deselected by default,
 so neither CI nor the normal test run depends on an external service.
@@ -237,7 +316,7 @@ Linting and type checking:
 ```bash
 uv run ruff check .
 uv run ruff format --check .
-uv run mypy src/sentinel
+uv run mypy src/sentinel scripts
 ```
 
 ---
@@ -248,17 +327,32 @@ uv run mypy src/sentinel
 src/sentinel/
   config.py                    configuration (env-driven, no hardcoded values)
   logging_setup.py             logging configuration
-  cli.py                       argparse CLI: ingest, query
+  cli.py                       argparse CLI: ingest, query, resolve
+  manifest.py                  generic manifest helpers (hash, read, write)
   ingest/
     socrata.py                 paginating, retrying Socrata client
     food_inspections.py        orchestration: pages -> Parquet + manifest
-    manifest.py                provenance record model and I/O
+    manifest.py                ingestion provenance model
   query/
     duckdb_queries.py          DuckDB over the raw Parquet
-tests/                         unit tests (mocked HTTP) + live smoke test
-data/raw|interim|processed/    data layers; contents gitignored
+  entity/                      Component 2: entity resolution
+    models.py                  frozen data structures + DEFAULT_THRESHOLDS
+    normalize.py               name / address / geo normalization
+    nodes.py                   rows -> distinct identity signatures
+    blocking.py                candidate pair generation
+    evidence.py                signals, vetoes, named match rules
+    unionfind.py               disjoint-set union (no networkx)
+    cluster.py                 components, invariants, split ladder
+    validate.py                post-resolution checks
+    writer.py                  the three output tables
+    resolve.py                 orchestration (the only module doing I/O)
+scripts/profile_entities.py    read-only data profiling (analysis, not library)
+tests/                         unit + integration tests; tests/fixtures/ holds
+                               real regression cases as literal Python
+data/raw|interim|processed/    data layers; contents gitignored, manifests kept
+docs/analysis/                 empirical findings
 docs/api/                      verified API behaviour
-docs/data_contracts/           raw dataset contract
+docs/data_contracts/           raw dataset + entity resolution output contracts
 docs/decisions/                architecture decision records
 ```
 
@@ -266,14 +360,14 @@ docs/decisions/                architecture decision records
 
 ## Project roadmap
 
-Component 1 is the only implemented component. Everything below is **planned,
-not implemented** — no code for any of it exists in this repository.
+Components 1 and 2 are implemented. Everything below them is **planned, not
+implemented** — no code for any of it exists in this repository.
 
 | # | Component | Status |
 |---|---|---|
 | 1 | Project foundation + Chicago data ingestion | **Implemented** |
-| 2 | Entity resolution | Not implemented |
-| 3 | Target construction | Not implemented |
+| 2 | Entity resolution | **Implemented** |
+| 3 | Target construction | Next |
 | 4 | As-of feature engineering | Not implemented |
 | 5 | Temporal evaluation framework | Not implemented |
 | 6 | Baseline models | Not implemented |
