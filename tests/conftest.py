@@ -161,3 +161,44 @@ def entity_scenario(rows: list[dict[str, Any]]) -> pl.DataFrame:
     from sentinel.ingest.food_inspections import records_to_frame
 
     return records_to_frame(rows, columns=FIELD_NAMES)
+
+
+# --- Component 3 (target construction) fixtures -------------------------
+
+
+def make_inspection_record(index: int, **overrides: Any) -> dict[str, Any]:
+    """A raw-shaped record with outcome fields overridable.
+
+    Defaults to an eligible, negative canvass in the code era, so a test only
+    has to state the one thing it is about. Pass ``results=``, ``violations=``,
+    ``inspection_type=`` or ``inspection_date=`` to move it off that baseline.
+    """
+    record = make_record(index)
+    record.update(
+        {
+            "inspection_date": "2022-03-14T00:00:00.000",
+            "inspection_type": "Canvass",
+            "results": "Pass",
+            "violations": "55. PHYSICAL FACILITIES - Comments: DIRTY FLOOR.",
+        }
+    )
+    record.update(overrides)
+    return record
+
+
+def target_scenario(rows: list[dict[str, Any]]) -> pl.DataFrame:
+    """Turn override dicts into a raw-shaped, all-Utf8 frame."""
+    from sentinel.ingest.food_inspections import records_to_frame
+
+    return records_to_frame(rows, columns=FIELD_NAMES)
+
+
+def assignment_frame(pairs: list[tuple[str, str]]) -> pl.DataFrame:
+    """A minimal Component 2 assignments frame: (inspection_id, establishment_id)."""
+    return pl.DataFrame(
+        {
+            "inspection_id": [i for i, _ in pairs],
+            "establishment_id": [e for _, e in pairs],
+        },
+        schema={"inspection_id": pl.Utf8, "establishment_id": pl.Utf8},
+    )

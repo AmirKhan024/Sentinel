@@ -79,6 +79,16 @@ class Settings(BaseSettings):
         return self.data_dir / "processed"
 
     @property
+    def target_interim_dir(self) -> Path:
+        """Where Component 3 writes the prediction target.
+
+        Interim rather than processed: ADR 0005 reserves the processed layer for
+        model-ready tables, and this is labels only -- Component 4 must still
+        join as-of features onto it before anything can be trained.
+        """
+        return self.interim_dir / "target"
+
+    @property
     def entity_resolution_interim_dir(self) -> Path:
         """Where Component 2 writes its outputs.
 
