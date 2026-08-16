@@ -186,3 +186,118 @@ def test_resolve_reports_when_no_raw_file_exists(
 ) -> None:
     monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
     assert main(["resolve"]) == 1
+
+
+# --- build-target subcommand -----------------------------------------------
+
+
+def test_build_target_parses_with_no_flags() -> None:
+    args = parse(["build-target"])
+    assert args.command == "build-target"  # type: ignore[attr-defined]
+    assert args.parquet is None  # type: ignore[attr-defined]
+    assert args.assignments is None  # type: ignore[attr-defined]
+    assert args.dry_run is False  # type: ignore[attr-defined]
+
+
+def test_build_target_accepts_both_input_overrides() -> None:
+    args = parse(["build-target", "--parquet", "raw.parquet", "--assignments", "asg.parquet"])
+    assert args.parquet == Path("raw.parquet")  # type: ignore[attr-defined]
+    assert args.assignments == Path("asg.parquet")  # type: ignore[attr-defined]
+
+
+def test_build_target_accepts_dry_run_and_report() -> None:
+    args = parse(["build-target", "--dry-run", "--report"])
+    assert args.dry_run is True  # type: ignore[attr-defined]
+    assert args.report is True  # type: ignore[attr-defined]
+
+
+def test_build_target_accepts_log_level_on_either_side() -> None:
+    before = parse(["--log-level", "DEBUG", "build-target"])
+    after = parse(["build-target", "--log-level", "DEBUG"])
+    assert before.log_level == after.log_level == "DEBUG"  # type: ignore[attr-defined]
+
+
+def _tiny_target_inputs(tmp_path: Path) -> tuple[Path, Path]:
+    from tests.conftest import assignment_frame, make_inspection_record, target_scenario
+
+    raw = tmp_path / "food_inspections_20260816T000000Z.parquet"
+    asg = tmp_path / "establishment_assignments_20260816T000000Z.parquet"
+    target_scenario(
+        [
+            make_inspection_record(
+                1,
+                inspection_id="1",
+                violations="3. A - Comments: PRIORITY FOUNDATION 7-38-010.",
+                results="Fail",
+            ),
+            make_inspection_record(2, inspection_id="2"),
+        ]
+    ).write_parquet(raw)
+    assignment_frame([("1", "EST-A"), ("2", "EST-B")]).write_parquet(asg)
+    return raw, asg
+
+
+def test_build_target_writes_and_exits_zero(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw, asg = _tiny_target_inputs(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "targets"
+    code = main(
+        ["build-target", "--parquet", str(raw), "--assignments", str(asg), "--output-dir", str(out)]
+    )
+    assert code == 0
+    assert list(out.glob("inspection_targets_*.parquet"))
+    assert list(out.glob("manifest_inspection_targets_*.json"))
+
+
+def test_build_target_dry_run_writes_nothing(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw, asg = _tiny_target_inputs(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "targets"
+    assert (
+        main(
+            [
+                "build-target",
+                "--parquet",
+                str(raw),
+                "--assignments",
+                str(asg),
+                "--output-dir",
+                str(out),
+                "--dry-run",
+            ]
+        )
+        == 0
+    )
+    assert not out.exists()
+
+
+def test_build_target_reports_a_missing_input_without_a_traceback(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, asg = _tiny_target_inputs(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert (
+        main(
+            [
+                "build-target",
+                "--parquet",
+                str(tmp_path / "absent.parquet"),
+                "--assignments",
+                str(asg),
+            ]
+        )
+        == 1
+    )
+
+
+def test_build_target_reports_when_no_raw_file_exists(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert main(["build-target"]) == 1

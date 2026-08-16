@@ -16,6 +16,8 @@ Commands
     sentinel query --name row_count            query the latest raw Parquet
     sentinel resolve                           resolve establishment identities
     sentinel resolve --dry-run --report        resolve without writing anything
+    sentinel build-target                      construct the prediction target
+    sentinel build-target --dry-run --report   build without writing anything
 """
 
 from __future__ import annotations
@@ -33,6 +35,9 @@ from sentinel.ingest.food_inspections import ingest_food_inspections
 from sentinel.ingest.socrata import SocrataError
 from sentinel.logging_setup import configure_logging
 from sentinel.query import duckdb_queries
+from sentinel.target import validate as target_validate
+from sentinel.target.build import TargetConstructionError, build_targets
+from sentinel.target.build import summarize as summarize_target
 
 logger = logging.getLogger("sentinel.cli")
 
@@ -44,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="sentinel",
         description=(
             "Sentinel - risk-prioritized food inspection scheduling "
-            "(ingestion and entity resolution)."
+            "(ingestion, entity resolution and target construction)."
         ),
     )
     parser.add_argument("--version", action="version", version=f"sentinel {__version__}")
@@ -152,6 +157,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", help="Resolve and validate, but write nothing."
     )
     resolve.add_argument(
+        "--report", action="store_true", help="Print the full validation report, not only failures."
+    )
+
+    # --- build-target -----------------------------------------------------
+    build_target = subparsers.add_parser(
+        "build-target",
+        parents=[common],
+        help="Construct the prediction target from resolved inspections.",
+    )
+    build_target.add_argument(
+        "--parquet",
+        type=Path,
+        metavar="PATH",
+        help="Raw Parquet. Defaults to the most recent raw file.",
+    )
+    build_target.add_argument(
+        "--assignments",
+        type=Path,
+        metavar="PATH",
+        help="Component 2 assignments. Defaults to the most recent.",
+    )
+    build_target.add_argument(
+        "--output-dir",
+        type=Path,
+        metavar="DIR",
+        help="Destination directory for the target table and manifest.",
+    )
+    build_target.add_argument(
+        "--dry-run", action="store_true", help="Construct and validate, but write nothing."
+    )
+    build_target.add_argument(
         "--report", action="store_true", help="Print the full validation report, not only failures."
     )
 
@@ -271,6 +307,45 @@ def _run_resolve(args: argparse.Namespace, settings: Settings) -> int:
     return 1 if failed else 0
 
 
+def _run_build_target(args: argparse.Namespace, settings: Settings) -> int:
+    parquet_path = args.parquet
+    assignments_path = args.assignments
+    try:
+        if parquet_path is None:
+            parquet_path = duckdb_queries.latest_parquet(settings.food_inspections_raw_dir)
+            logger.info("Using most recent raw file: %s", parquet_path)
+        if assignments_path is None:
+            assignments_path = duckdb_queries.latest_parquet(
+                settings.entity_resolution_interim_dir,
+                prefix="establishment_assignments_",
+            )
+            logger.info("Using most recent assignments: %s", assignments_path)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        return 1
+
+    try:
+        result = build_targets(
+            settings,
+            parquet_path=parquet_path,
+            assignments_path=assignments_path,
+            output_dir=args.output_dir,
+            dry_run=args.dry_run,
+        )
+    except (FileNotFoundError, TargetConstructionError, ValueError) as exc:
+        logger.error("Target construction failed: %s", exc)
+        return 1
+
+    print(summarize_target(result))
+
+    failed = target_validate.has_failures(result.checks)
+    if args.report or failed:
+        print(target_validate.format_report(result.checks))
+    # A failed structural check means the labels are wrong, so the command fails
+    # loudly rather than handing quietly broken targets to Component 4.
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -284,6 +359,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_query(args, settings)
     if args.command == "resolve":
         return _run_resolve(args, settings)
+    if args.command == "build-target":
+        return _run_build_target(args, settings)
 
     # argparse enforces `required=True` on the subparser, so this is defensive
     # only. parser.error() exits with status 2.
