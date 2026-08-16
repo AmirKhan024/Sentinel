@@ -10,6 +10,8 @@ data/processed/*
 !data/processed/.gitkeep
 !data/raw/**/
 !data/raw/**/manifest_*.json
+!data/interim/**/
+!data/interim/**/manifest_*.json
 
 *.parquet
 *.csv

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import polars as pl
 import pytest
 
 from sentinel.config import Settings
@@ -133,3 +134,30 @@ def discovery_response() -> httpx.Response:
     so mocked side_effect sequences must account for it.
     """
     return httpx.Response(200, json=[make_record(0)], headers=SODA_HEADERS)
+
+
+# --- Component 2 (entity resolution) fixtures ---------------------------
+#
+# `make_record` deliberately makes every field distinct, which is the right
+# shape for ingestion tests and useless for entity resolution: the whole problem
+# is near-duplicates. These helpers let a test state only the identity fields it
+# cares about and inherit sane values for the rest.
+
+
+def make_entity_record(index: int, **overrides: Any) -> dict[str, Any]:
+    """A raw-shaped record with identity fields overridable.
+
+    Pass ``dba_name=...``, ``address=...``, ``license_=...`` and so on to build
+    a deliberate near-duplicate. ``None`` is a meaningful override (it sets the
+    field to null); omitted keys keep `make_record`'s default.
+    """
+    record = make_record(index)
+    record.update(overrides)
+    return record
+
+
+def entity_scenario(rows: list[dict[str, Any]]) -> pl.DataFrame:
+    """Turn override dicts into a raw-shaped, all-Utf8 frame."""
+    from sentinel.ingest.food_inspections import records_to_frame
+
+    return records_to_frame(rows, columns=FIELD_NAMES)

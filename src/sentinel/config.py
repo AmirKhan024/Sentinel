@@ -79,6 +79,16 @@ class Settings(BaseSettings):
         return self.data_dir / "processed"
 
     @property
+    def entity_resolution_interim_dir(self) -> Path:
+        """Where Component 2 writes its outputs.
+
+        Interim rather than processed: ADR 0005 reserves the processed layer for
+        analysis- and model-ready tables, and an establishment crosswalk is a
+        mid-pipeline key mapping that Component 3 consumes.
+        """
+        return self.interim_dir / "entity_resolution"
+
+    @property
     def food_inspections_raw_dir(self) -> Path:
         """Where raw food-inspection Parquet files and their manifests land."""
         return self.raw_dir / "food_inspections"
