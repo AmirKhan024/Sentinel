@@ -1,8 +1,8 @@
 # Current Status
 
 **Last updated:** 2026-08-16
-**Current component:** 2 of 21 — Entity Resolution
-**State:** Component 2 complete and verified against the full 314,245-row snapshot.
+**Current component:** 3 of 21 — Target Construction
+**State:** Component 3 complete and verified against the full 314,245-row snapshot.
 
 ---
 
@@ -65,20 +65,43 @@ mapping.
 
 ---
 
+### Component 3 — Target construction
+
+Defines what Sentinel predicts: **for each establishment-date on which a routine
+canvass occurred, did that canvass find at least one Priority or Priority
+Foundation violation?**
+
+* `scripts/profile_target.py` — 31 read-only profiles run before any target code.
+* `docs/analysis/target_construction_findings.md` — the measurements and the
+  decision each one forced.
+* `src/sentinel/target/` — violation parsing and severity classification,
+  eligibility gates, same-day collapse, validation, output table.
+* `sentinel build-target` — CLI with `--dry-run` and `--report`.
+* Contract in `docs/data_contracts/inspection_targets.md`; ADR 0008 (the target
+  definition) and ADR 0009 (the 2018-07-01 code-era boundary).
+* Also corrected `docs/data_contracts/food_inspections_raw.md`, which documented
+  four `results` values where there are seven.
+
+**Verified on the full snapshot:** 314,245 inspections → 313,624 target rows →
+**57,727 eligible, 30,316 positive (52.52%)** in 25 s. All twelve structural
+checks pass. Rebuilding reproduces the table exactly, and a seeded permutation of
+every input row produces identical labels.
+
+---
+
 ## In Progress
 
-Nothing. Components 1 and 2 are closed.
+Nothing. Components 1, 2 and 3 are closed.
 
 ---
 
 ## Not Started
 
-Components 3–21. No code exists for any of them.
+Components 4–21. No code exists for any of them.
 
 | # | Component | State |
 |---|---|---|
-| 3 | Target construction | Not started — **next** |
-| 4 | As-of feature engineering | Not started |
+| 4 | As-of feature engineering | Not started — **next** |
 | 5 | Temporal evaluation framework | Not started |
 | 6 | Baseline models | Not started |
 | 7 | XGBoost / LightGBM | Not started |
@@ -115,6 +138,13 @@ src/sentinel/
     manifest.py          IngestionManifest model (helpers re-exported)
   query/
     duckdb_queries.py    NAMED_QUERIES, latest_parquet, run_named_query
+  target/                Component 3
+    models.py            Severity, TargetStatus, TARGET_DEFINITION_VERSION
+    violations.py        split_violations, parse_entry, classify
+    construct.py         classify_inspection, collapse_same_day, build_target_rows
+    validate.py          validate_targets, format_report, has_failures
+    writer.py            TARGETS_SCHEMA, TARGET_EVENT_COLUMNS
+    build.py             build_targets (the only I/O)
   entity/                Component 2
     models.py            frozen structures, MatchTier, DEFAULT_THRESHOLDS
     normalize.py         normalize_name / _address / _geo / _license / _zip
@@ -128,10 +158,11 @@ src/sentinel/
     resolve.py           resolve_establishments (the only I/O)
 scripts/
   profile_entities.py    36 read-only profiles; analysis tooling, not library
+  profile_target.py      31 read-only profiles over raw + resolved data
 ```
 
 Runtime dependencies: httpx, pydantic, pydantic-settings, polars, pyarrow,
-duckdb. **Component 2 added none.** Union-find and haversine are written out
+duckdb. **Components 2 and 3 added none.** Union-find and haversine are written out
 rather than importing networkx or a geo library; string similarity is token-set
 equality over frozensets rather than rapidfuzz. Nothing for future components.
 
@@ -186,6 +217,29 @@ data/interim/entity_resolution/
    establishments_<UTC>.parquet                35,859 rows
    entity_resolution_edges_<UTC>.parquet       90,643 rows (audit trail)
    manifest_establishment_assignments_<UTC>.json
+
+
+Component 3
+-----------
+raw Parquet + establishment_assignments
+   |
+   |  read 5 outcome columns; identity comes from Component 2, never re-derived
+   v
+eligibility gates
+   |  era >= 2018-07-01 (172,879 excluded)
+   |  type == CANVASS   (70,848 excluded)
+   |  results in {Pass, Pass w/ Conditions, Fail} (12,091 excluded)
+   v
+parse violations -> PRIORITY / PRIORITY FOUNDATION / UNCLASSIFIED
+   |  markers in comment text; narrative spans excluded;
+   |  the violation NUMBER is deliberately not used
+   v
+collapse (establishment, date) -> one row, target = OR over the day
+   |
+   v
+data/interim/target/
+   inspection_targets_<UTC>.parquet          313,624 rows, 57,727 labelled
+   manifest_inspection_targets_<UTC>.json
 ```
 
 `data/raw/` and `data/interim/` are written. `data/processed/` is still empty.
@@ -194,12 +248,12 @@ data/interim/entity_resolution/
 
 ## Tests
 
-**Command:** `uv run pytest` · **Result: 342 passed, 3 deselected** (2026-08-16)
+**Command:** `uv run pytest` · **Result: 543 passed, 3 deselected** (2026-08-16)
 
-Component 2 added 265 tests. Quality gate, all passing:
+Component 2 added 265 tests; Component 3 added 201. Quality gate, all passing:
 
 ```bash
-uv run pytest                  # 342 passed, 3 deselected
+uv run pytest                  # 543 passed, 3 deselected
 uv run ruff check .            # All checks passed
 uv run ruff format --check .   # 56 files already formatted
 uv run mypy src/sentinel scripts   # no issues in 23 source files
@@ -216,6 +270,15 @@ uv run mypy src/sentinel scripts   # no issues in 23 source files
 | Integration (25) | a 10-row scenario with a known correct grouping; schema contract tests on names *and* dtypes; manifest round-trip; dry-run writes nothing; empty and all-sentinel-licence inputs |
 | Determinism | same input twice, and a seeded row-shuffled input, yield identical mappings — asserted in unit tests and verified separately on all 314,245 real rows |
 | Regression (22) | 12 real cases copied verbatim from the snapshot, including the O'Hare over-merge the first run produced |
+
+| Component 3 area | Coverage |
+|---|---|
+| Violation parsing (44) | entry splitting and structure; Priority Foundation before Priority; typo tolerance; every narrative exclusion, each with a test that it fires *and* one that it does not fire on a genuine citation; malformed entries kept |
+| Construction (67) | every eligibility gate; every `results` value; the era boundary asserted at 2018-07-01 exactly; canvass vs re-inspection vs typo variants; Pass+null as a true zero and Fail+null as unknown; same-day collapse and OR semantics; numeric id ordering |
+| Validation (24) | a passing and a failing case for each of the twelve error checks |
+| Build (25) | a scenario with a known-correct label set; schema contract on names *and* dtypes; manifest pinning both input hashes; dry-run; empty input; **leakage guard** asserting no historical-aggregate column exists |
+| Regression (33) | 12 real inspections copied verbatim, covering every `target_status` and both labels |
+| Determinism | same input twice and a seeded row shuffle — asserted in unit tests and verified separately on all 314,245 real rows |
 
 | Area | Coverage |
 |---|---|
@@ -278,6 +341,31 @@ Dataset total as of 2026-08-15: **314,245 rows** (`$select=count(*)`).
 | Peak RSS | ~966 MB |
 | Date range | 2010-01-04 → 2026-08-14 |
 
+### Target construction (2026-08-16)
+
+| Property | Value |
+|---|---|
+| Target rows | 313,624 |
+| **Eligible (labelled)** | **57,727** |
+| Positive / negative | 30,316 / 27,411 |
+| **Positive rate** | **52.52%** |
+| Establishments with ≥1 eligible row | 15,144 |
+| Runtime | 25 s |
+| `ineligible_era` (pre 2018-07-01) | 172,879 |
+| `ineligible_type` (not a canvass) | 70,848 |
+| `ineligible_result` (no inspection) | 12,091 |
+| `unknown_violations` | 79 |
+
+Positive rate by year: 87.6% (2018 H2) · 77.4% · 59.4% · 50.3% · 46.5% · 46.1% ·
+42.6% · 39.2% · 39.1% (2026). Component 5 must account for this drift.
+
+Key data facts driving the design: **Chicago replaced its violation scheme cleanly
+on 2018-07-01** (June: 0 rows with Priority terminology, 415 with Critical/Serious;
+July: 761 and 0); **`results` has seven values, not four**; **`Pass w/ Conditions`
+carries priority violations 97.9% of the time** against 0.5% for `Pass`; the
+violation number does *not* encode severity; **24.9% of `Out of Business` records
+are followed by another inspection** at the same premises.
+
 ### Entity resolution (2026-08-16)
 
 | Property | Value |
@@ -302,7 +390,26 @@ pairs overlap in time rather than succeeding one another.
 
 ## Known Issues
 
-1. **Same-name outlets at a dense address can still merge.** Two outlets of one
+### Component 3
+
+1. **52% of the dataset cannot be labelled.** 172,879 rows predate the
+   2018-07-01 code change, where Priority violations are undefined. They remain
+   usable as *features* — only the *label* is impossible.
+2. **The base rate drifts from 87.6% to 39.1%.** Flagged via `code_era_phase`,
+   not corrected. Component 5 must handle it.
+3. **The narrative-exclusion list is judgement.** Four patterns affecting 74
+   entries and 10 inspection labels, enumerated in the data contract.
+4. **8 `Pass w/ Conditions` rows are labelled negative** where the result implies
+   otherwise, because the parser stays independent of `results`.
+5. **Inspector write-up variation is unmeasurable.** A priority violation found
+   but not labelled is a false negative and the open data has no ground truth to
+   check against. **NOT VERIFIED.**
+6. **Severity within positive is not represented.** One priority violation and
+   twelve produce the same label.
+
+### Component 2
+
+7. **Same-name outlets at a dense address can still merge.** Two outlets of one
    chain at one address with no store number and no distinguishing `aka_name`
    are indistinguishable from the data. `MCDONALD'S` at O'Hare (22 nodes, 20
    licences, 5 names) is the known example. Bounded to mega-addresses and
@@ -344,29 +451,46 @@ pairs overlap in time rather than succeeding one another.
 
 ## Next Component
 
-**Component 3 — Target construction.**
+**Component 4 — As-of feature engineering.**
 
-Defining what the model predicts, from the `results` column, over the
-establishment identities Component 2 produced.
+Building the information a scheduler actually had *before* each inspection, so a
+model can be trained on it.
 
 Not started. No code, no directories, no dependencies added.
 
-Before writing code, investigate the actual data as Component 2 did:
+### The boundary that matters
 
-* What exactly is in `results`? The four documented values are `Pass`, `Fail`,
-  `Pass w/ Conditions` and `Out of Business`, but the full snapshot has never
-  been profiled for the complete value set, casing variants or blanks.
-* How does `inspection_type` interact with it? A `License` inspection is not
-  the same event as a `Canvass` or a `Complaint`, and pooling them may be wrong.
-* Is `Pass w/ Conditions` a pass or a failure for Sentinel's purposes? This is
-  a definitional decision that needs an ADR, not a default.
-* What does `Out of Business` mean for an establishment's timeline, given that
-  Component 2 treats successive tenants at one premises as one establishment?
-* Are there multiple inspections of one establishment on one date, and what
-  should the target be then?
-* `violations` is unstructured free text with a ` | ` separator and averages
-  ~1.55 KB per row. Whether it feeds the target or waits for a later component
-  is a scoping decision.
+Component 3 emits one row per (establishment, date) with `inspection_date` as the
+**as-of boundary**. A feature for that row may use only information dated
+**strictly before** that date.
 
-Component 2 gives you `inspection_id -> establishment_id`. Join on it; do not
-re-derive identity.
+Forbidden as inputs, because they describe the outcome:
+`target`, `results`, `evidence`, `has_priority`, `has_priority_foundation`,
+`n_priority_entries`, `n_priority_foundation_entries`, `n_violation_entries`.
+The set is enumerated in `sentinel.target.writer.TARGET_EVENT_COLUMNS`.
+
+**Pre-2018 inspections are usable as features even though they cannot be
+labelled.** The era boundary constrains what can be *labelled*, not what can be
+*known* — a 2014 inspection is legitimate history for a 2022 target row.
+
+### Investigate before coding, as Components 2 and 3 did
+
+* What is the distribution of prior-inspection counts at each target row's
+  as-of date? How many rows have no prior history at all?
+* How should the pre-2018 era contribute? Its violation vocabulary differs, so a
+  "prior priority violations" feature is undefined there while "prior failures"
+  is not.
+* How do establishment attributes (`facility_type`, `risk`, zip, geography)
+  behave over time within one establishment? Component 2 measured `facility_type`
+  as 99.5% stable per licence, but that was per licence, not per establishment.
+* What does an establishment's inspection cadence look like, and does a
+  days-since-last-inspection feature leak scheduling policy rather than risk?
+* Does Component 2's physical-premises definition create features that span a
+  tenant change? `n_names` and `n_licenses` on the establishments table let you
+  detect one.
+
+### What must not be re-derived
+
+Identity comes from Component 2, labels from Component 3. Join on
+`establishment_id` and `(establishment_id, inspection_date)`; do not recompute
+either.

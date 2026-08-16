@@ -14,7 +14,7 @@ implemented. See [STATUS.md](STATUS.md) for the authoritative project state.
 
 ## Current status
 
-**Components 1 and 2 complete: ingestion, and entity resolution.**
+**Components 1-3 complete: ingestion, entity resolution, and target construction.**
 
 What exists today:
 
@@ -29,16 +29,19 @@ What exists today:
   inspection to a stable `establishment_id` representing a physical premises,
   plus an audit table recording why every merge — and every declined merge —
   was decided the way it was.
-* 342 unit and integration tests with mocked HTTP, plus an opt-in live smoke
+* **Target construction**: a precise, leakage-safe prediction target -- for each
+  establishment-date on which a routine canvass occurred, did that canvass find
+  at least one Priority or Priority Foundation violation?
+* 543 unit and integration tests with mocked HTTP, plus an opt-in live smoke
   test.
 
-Nothing else. No targets, no features, no models, no scheduling.
+Nothing else. No features, no models, no scheduling.
 
 ---
 
 ## Architecture
 
-Two components, one path from the API to stable establishment identities:
+Three components, one path from the API to a labelled prediction target:
 
 ```text
 Chicago Data Portal (Socrata SODA 2.1)
@@ -94,7 +97,38 @@ Chicago Data Portal (Socrata SODA 2.1)
           establishments_<UTC>.parquet              one row per establishment
           entity_resolution_edges_<UTC>.parquet     the audit trail
           manifest_establishment_assignments_<UTC>.json
+
+
+        ---- Component 3: target construction --------------------------
+
+        raw Parquet  +  establishment_assignments
+                │  identity columns are Component 2's contract, never re-derived
+                ▼
+        eligibility gates                         target/construct.py
+                │  era >= 2018-07-01 · type == CANVASS
+                │  results in {Pass, Pass w/ Conditions, Fail}
+                ▼
+        parse and classify violations             target/violations.py
+                │  PRIORITY / PRIORITY FOUNDATION markers,
+                │  narrative text excluded, violation number NOT used
+                ▼
+        collapse same establishment-date          target/construct.py
+                │  one scheduling decision = one row, target = OR
+                ▼
+        data/interim/target/
+          inspection_targets_<UTC>.parquet         313,624 rows
+          manifest_inspection_targets_<UTC>.json
 ```
+
+The **target** is: for each establishment-date on which a routine canvass
+occurred, did that canvass find at least one **Priority or Priority Foundation**
+violation? Not `results == 'Fail'` -- among canvasses, priority violations appear
+in 97.9% of `Pass w/ Conditions` inspections, so a result-based label would
+mislabel 16,261 of them. The reasoning is in
+[`docs/analysis/target_construction_findings.md`](docs/analysis/target_construction_findings.md).
+
+`inspection_date` is the **as-of boundary**: Component 4 may use only information
+dated strictly before it.
 
 An **establishment** is a *physical food-service premises*, not a licence and not
 a business name. Successive tenants at one address are the same establishment
@@ -266,6 +300,34 @@ duckdb.sql("""
 
 ---
 
+### Building the prediction target
+
+```bash
+# build from the latest raw snapshot and the latest Component 2 assignments
+uv run sentinel build-target
+
+# construct and validate without writing anything
+uv run sentinel build-target --dry-run --report
+```
+
+Exits non-zero if a structural validation check fails. Takes about 25 seconds on
+the full snapshot.
+
+To see why a row is labelled the way it is, read its evidence span:
+
+```python
+import duckdb
+
+duckdb.sql("""
+    SELECT establishment_id, inspection_date, target, results, evidence
+    FROM read_parquet('data/interim/target/inspection_targets_*.parquet')
+    WHERE target = 1
+    LIMIT 5
+""").show()
+```
+
+---
+
 ## Output
 
 Every ingestion run writes two files into `data/raw/food_inspections/`:
@@ -288,7 +350,8 @@ Parquet files are gitignored; manifests are committed, so the repository keeps a
 history of what was ingested without carrying the bulk data.
 
 Entity resolution writes three tables plus its own manifest under
-`data/interim/entity_resolution/`, following the same rules. The full schemas,
+`data/interim/entity_resolution/`, and target construction writes one table plus
+a manifest under `data/interim/target/`, all following the same rules. The full schemas,
 identifier semantics and stability guarantees are in
 [`docs/data_contracts/establishment_assignments.md`](docs/data_contracts/establishment_assignments.md).
 The short version: `establishment_assignments` maps every `inspection_id` to an
@@ -305,7 +368,7 @@ uv run pytest -v
 uv run pytest -m live         # opt-in: makes one real call to the Chicago API
 ```
 
-342 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
+543 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
 transport layer with `respx`, so real request
 construction, status handling, pagination and retry logic are all exercised
 without touching the network. Live tests are marked and deselected by default,
@@ -335,6 +398,13 @@ src/sentinel/
     manifest.py                ingestion provenance model
   query/
     duckdb_queries.py          DuckDB over the raw Parquet
+  target/                      Component 3: target construction
+    models.py                  frozen structures + the definition constants
+    violations.py              deterministic violation parsing/classification
+    construct.py               eligibility gates, labelling, same-day collapse
+    validate.py                post-construction checks
+    writer.py                  the output table schema
+    build.py                   orchestration (the only module doing I/O)
   entity/                      Component 2: entity resolution
     models.py                  frozen data structures + DEFAULT_THRESHOLDS
     normalize.py               name / address / geo normalization
@@ -346,7 +416,8 @@ src/sentinel/
     validate.py                post-resolution checks
     writer.py                  the three output tables
     resolve.py                 orchestration (the only module doing I/O)
-scripts/profile_entities.py    read-only data profiling (analysis, not library)
+scripts/profile_entities.py    read-only entity profiling (analysis, not library)
+scripts/profile_target.py      read-only target profiling
 tests/                         unit + integration tests; tests/fixtures/ holds
                                real regression cases as literal Python
 data/raw|interim|processed/    data layers; contents gitignored, manifests kept
@@ -360,15 +431,15 @@ docs/decisions/                architecture decision records
 
 ## Project roadmap
 
-Components 1 and 2 are implemented. Everything below them is **planned, not
+Components 1-3 are implemented. Everything below them is **planned, not
 implemented** — no code for any of it exists in this repository.
 
 | # | Component | Status |
 |---|---|---|
 | 1 | Project foundation + Chicago data ingestion | **Implemented** |
 | 2 | Entity resolution | **Implemented** |
-| 3 | Target construction | Next |
-| 4 | As-of feature engineering | Not implemented |
+| 3 | Target construction | **Implemented** |
+| 4 | As-of feature engineering | Next |
 | 5 | Temporal evaluation framework | Not implemented |
 | 6 | Baseline models | Not implemented |
 | 7 | XGBoost / LightGBM | Not implemented |

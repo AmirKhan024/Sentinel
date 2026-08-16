@@ -9,7 +9,7 @@ see README.md for that and STATUS.md for current state.
 
 ## Working agreement
 
-* **One component at a time.** 21 components are planned; Components 1 and 2
+* **One component at a time.** 21 components are planned; Components 1-3
   exist. Never implement ahead. If something belongs to a later component,
   write it down as a TODO or an architectural note instead of building it.
 * **No fake completion.** Never claim tests pass, ingestion works, or a schema
@@ -66,6 +66,67 @@ see README.md for that and STATUS.md for current state.
     earliest inspection. Verified against a seeded shuffle of all 314,245 rows.
 14. **`establishment_id` is snapshot-scoped**, not a durable primary key. A
     later snapshot can merge or split clusters and retire ids (ADR 0007).
+
+### Component 3 invariants — the target is a regulatory statement, not a convenience
+
+15. **The target is: at an eligible routine canvass, was at least one Priority or
+    Priority Foundation violation found?** Not `results == 'Fail'` — among
+    canvasses, priority violations appear in 97.9% of `Pass w/ Conditions` rows,
+    so a result-based label would mislabel 16,261 inspections.
+16. **The label is read from the violation text, never from `results`.** Using
+    the result would make the target partly circular. `results` is consulted only
+    to decide whether a row is *labellable* (a `Fail` with no text is unknown).
+17. **Eligibility starts 2018-07-01.** Chicago replaced Critical/Serious with
+    Priority/Priority Foundation/Core on that date, cleanly. Before it the target
+    is *undefined*, not sparse.
+18. **`Out of Business`, `No Entry`, `Not Ready` and `Business Not Located` are
+    ineligible, not negative.** No inspection occurred. Labelling them negative
+    would teach that a closed establishment is a clean one.
+19. **`inspection_date` is the as-of boundary.** Component 4 may use only
+    information strictly before it. `target`, `results`, `evidence` and the
+    `n_*_entries` columns describe the outcome and are forbidden as features —
+    the set is `sentinel.target.writer.TARGET_EVENT_COLUMNS`.
+20. **Pre-2018 inspections are usable as features even though they cannot be
+    labelled.** The era boundary constrains labelling, not knowledge.
+21. **One row per (establishment, date), target = OR over that day's canvasses.**
+    "Inspect E on date D" is one scheduling decision.
+22. **Never re-derive identity or labels.** Component 2 owns `establishment_id`;
+    Component 3 owns `target`.
+
+---
+
+## Key target facts (measured 2026-08-16 on the full snapshot)
+
+Detail in `docs/analysis/target_construction_findings.md`.
+
+* **314,245 inspections -> 313,624 target rows -> 57,727 eligible, 30,316
+  positive (52.52%)** in 25 s, across 15,144 establishments.
+* **`results` has SEVEN values, not the four that were documented**: Pass
+  162,607 · Fail 60,513 · Pass w/ Conditions 46,661 · Out of Business 25,767 ·
+  No Entry 14,045 · Not Ready 4,557 · Business Not Located 95. No nulls, blanks
+  or case variants.
+* **The 2018-07-01 cutover is clean**: June 2018 has 0 rows using Priority
+  terminology and 415 using Critical/Serious; July has 761 and 0.
+* **Priority presence by result, among canvasses**: Fail 99.4%, Pass w/
+  Conditions 97.9%, Pass 0.45%.
+* **The violation number does NOT encode severity.** Item 10 is 42.2% Priority
+  Foundation / 11.3% Priority / 46.5% unlabelled; the same item covers a hand
+  sink with no hot water and a missing hand-washing sign.
+* **Requiring a `7-38-xxx` citation code would create ~21,281 false negatives** —
+  "PRIORITY FOUNDATION VIOLATION. NO CITATION ISSUED." is genuine.
+* **72% of violation entries carry no severity label**, so unlabelled means
+  UNCLASSIFIED, never "Core".
+* **Narrative exclusions** (grace period, will-be-issued, no-priority) change 74
+  entries and **10 inspection labels** out of 137,598 and 58,427.
+* **24.9% of `Out of Business` records are followed by another inspection** at
+  the same premises, median 273 days later.
+* **Base rate drift**: 87.6% (2018 H2) -> 77.4 -> 59.4 -> 50.3 -> 46.5 -> 46.1 ->
+  42.6 -> 39.2 -> 39.1% (2026). `code_era_phase` flags the adoption period.
+* Exclusions: `ineligible_era` 172,879 · `ineligible_type` 70,848 ·
+  `ineligible_result` 12,091 · `unknown_violations` 79.
+* 111 distinct `inspection_type` values; only `Canvass` (70,518 in the code era)
+  is eligible. `Canvass Re-Inspection` (16,998) is excluded because it exists
+  only because something failed.
 
 ---
 
@@ -150,7 +211,7 @@ data/raw/food_inspections/                output: parquet + manifest_*.json
 docs/api/socrata_findings.md              verified API behaviour — read before
                                           touching the client
 docs/data_contracts/food_inspections_raw.md   what a raw file guarantees
-docs/decisions/                           7 ADRs
+docs/decisions/                           9 ADRs
 
 src/sentinel/entity/evidence.py           the match rules. Read the findings
                                           doc before changing any of them.
@@ -161,7 +222,19 @@ scripts/profile_entities.py               36 read-only data profiles
 data/interim/entity_resolution/           output: 3 parquet + manifest_*.json
 docs/analysis/entity_resolution_findings.md   why Component 2 works the way it
                                           does. Read before touching entity/.
-docs/data_contracts/establishment_assignments.md   the output contract
+docs/data_contracts/establishment_assignments.md   Component 2 output contract
+
+src/sentinel/target/violations.py         the violation parser + the narrative
+                                          exclusion list
+src/sentinel/target/construct.py          eligibility gates and labelling
+src/sentinel/target/models.py             CODE_ERA_START, INSPECTED_RESULTS,
+                                          TARGET_DEFINITION_VERSION
+scripts/profile_target.py                 31 read-only target profiles
+data/interim/target/                      output: parquet + manifest_*.json
+docs/analysis/target_construction_findings.md   why the target is defined this
+                                          way. Read before touching target/.
+docs/data_contracts/inspection_targets.md  the output contract and the
+                                          leakage rules for Component 4
 ```
 
 ---
@@ -177,8 +250,11 @@ uv run sentinel query --list
 uv run sentinel query --name row_count
 uv run sentinel resolve                       # entity resolution (~45 s)
 uv run sentinel resolve --dry-run --report    # validate, write nothing
-uv run python scripts/profile_entities.py     # 36 read-only data profiles
-uv run pytest                                 # 342 tests, offline
+uv run sentinel build-target                  # target construction (~25 s)
+uv run sentinel build-target --dry-run --report
+uv run python scripts/profile_entities.py     # 36 read-only entity profiles
+uv run python scripts/profile_target.py       # 31 read-only target profiles
+uv run pytest                                 # 543 tests, offline
 uv run pytest -m live                         # 3 live tests, hits the real API
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src/sentinel scripts
@@ -233,6 +309,35 @@ a bare `sentinel ingest` cannot accidentally pull 314k rows.
 8. **Should there be an `--as-of DATE` resolution mode?** Identity is currently
    reconstructed from the whole snapshot, which is argued to be legitimate
    rather than leakage. A strict mode would cost one run per evaluation fold.
+9. **Can the pre-2018 era support its own target?** 172,879 rows use the old
+   Critical/Serious scheme. A separate target could be defined for them, with its
+   own definition version. Not attempted.
+10. **Should the target become a count or a severity grade?** `v1` is binary
+    presence; a count reflects inspector verbosity as much as risk. Revisitable
+    as `v2`.
+
+---
+
+## Lessons learned (Component 3)
+
+* **Profile the value set before trusting a contract.** The raw data contract
+  documented four `results` values; there are seven, and the three missing ones
+  are exactly the "no inspection happened" cases that must not become negatives.
+* **Look for regime changes before defining anything longitudinal.** The whole
+  target hinged on noticing that "Priority" does not exist before 2018-07-01.
+  A single `GROUP BY year` on terminology presence found it in seconds; without
+  it, half the labels would have been silently wrong.
+* **A plausible structural signal can be a trap.** The violation number looks
+  like a severity code and is not one. Checking the association empirically
+  (item 10: 42/11/47) took one query and prevented a badly wrong parser.
+* **Prefer excluding narrow narrative spans to requiring strong evidence.**
+  Requiring a citation code would have looked rigorous and produced ~21,281 false
+  negatives. Excluding four boilerplate phrases changed 10 labels.
+* **Absence of a label is not evidence of the opposite.** 72% of entries carry no
+  severity marker, so the parser emits UNCLASSIFIED rather than "Core".
+* **Distinguish "not measured" from "measured as zero".** `Pass` with no
+  violation text is a true zero; `Fail` with no violation text is unknown. The
+  same null means different things depending on the row.
 
 ---
 
