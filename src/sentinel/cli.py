@@ -14,6 +14,8 @@ Commands
     sentinel ingest --full                     entire dataset
     sentinel query --list                      show available named queries
     sentinel query --name row_count            query the latest raw Parquet
+    sentinel resolve                           resolve establishment identities
+    sentinel resolve --dry-run --report        resolve without writing anything
 """
 
 from __future__ import annotations
@@ -25,6 +27,8 @@ from pathlib import Path
 
 from sentinel import __version__
 from sentinel.config import Settings, load_settings
+from sentinel.entity import validate
+from sentinel.entity.resolve import EntityResolutionError, resolve_establishments, summarize
 from sentinel.ingest.food_inspections import ingest_food_inspections
 from sentinel.ingest.socrata import SocrataError
 from sentinel.logging_setup import configure_logging
@@ -38,7 +42,10 @@ LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR"]
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sentinel",
-        description="Sentinel - risk-prioritized food inspection scheduling (Component 1).",
+        description=(
+            "Sentinel - risk-prioritized food inspection scheduling "
+            "(ingestion and entity resolution)."
+        ),
     )
     parser.add_argument("--version", action="version", version=f"sentinel {__version__}")
     parser.add_argument(
@@ -121,6 +128,31 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         metavar="PATH",
         help="Parquet file to query. Defaults to the most recent raw file.",
+    )
+
+    # --- resolve ----------------------------------------------------------
+    resolve = subparsers.add_parser(
+        "resolve",
+        parents=[common],
+        help="Resolve inspections into stable establishment identities.",
+    )
+    resolve.add_argument(
+        "--parquet",
+        type=Path,
+        metavar="PATH",
+        help="Raw Parquet to resolve. Defaults to the most recent raw file.",
+    )
+    resolve.add_argument(
+        "--output-dir",
+        type=Path,
+        metavar="DIR",
+        help="Destination directory for the resolved tables and manifest.",
+    )
+    resolve.add_argument(
+        "--dry-run", action="store_true", help="Resolve and validate, but write nothing."
+    )
+    resolve.add_argument(
+        "--report", action="store_true", help="Print the full validation report, not only failures."
     )
 
     return parser
@@ -208,6 +240,37 @@ def _run_query(args: argparse.Namespace, settings: Settings) -> int:
     return 0
 
 
+def _run_resolve(args: argparse.Namespace, settings: Settings) -> int:
+    parquet_path = args.parquet
+    if parquet_path is None:
+        try:
+            parquet_path = duckdb_queries.latest_parquet(settings.food_inspections_raw_dir)
+        except FileNotFoundError as exc:
+            logger.error("%s", exc)
+            return 1
+        logger.info("Using most recent raw file: %s", parquet_path)
+
+    try:
+        result = resolve_establishments(
+            settings,
+            parquet_path=parquet_path,
+            output_dir=args.output_dir,
+            dry_run=args.dry_run,
+        )
+    except (FileNotFoundError, EntityResolutionError, ValueError) as exc:
+        logger.error("Entity resolution failed: %s", exc)
+        return 1
+
+    print(summarize(result))
+
+    failed = validate.has_failures(result.checks)
+    if args.report or failed:
+        print(validate.format_report(result.checks))
+    # A failed structural check means the identities are wrong, so the command
+    # fails loudly rather than leaving quietly broken output for Component 3.
+    return 1 if failed else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -219,6 +282,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_ingest(args, settings)
     if args.command == "query":
         return _run_query(args, settings)
+    if args.command == "resolve":
+        return _run_resolve(args, settings)
 
     # argparse enforces `required=True` on the subparser, so this is defensive
     # only. parser.error() exits with status 2.
