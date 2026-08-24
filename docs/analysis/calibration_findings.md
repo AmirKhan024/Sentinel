@@ -638,12 +638,315 @@ does not read them from disk, because they are not there.
 
 ---
 
-## 12. Evaluation
+## 12. The evaluation
 
-_To be completed after the production run. This section will report the test-window results:
-before/after Brier, ECE, MCE, log-loss and reliability; the Brier decomposition; ranking
-preservation; per-quarter calibration drift; and `covid_shift` separately._
+Everything below is a **test-window** number. It was produced by one run of
+`sentinel calibrate`, after the tie rule was committed to git, and by
+`sentinel evaluate --predictions calibrated_predictions_20260824T153850Z.parquet` for the
+ranking metrics. Nothing was re-run to improve it.
+
+### 12.1 The gate: the base models are the models Components 6–8 published
+
+**207,680 regenerated test-window scores across 5 models and 18 folds, zero mismatches**,
+compared with `==` rather than a tolerance. The three committed prediction artifacts are
+byte-identical to what they were before this component ran, and their sha256s are recorded in
+`docs/data_contracts/calibrated_predictions.md`.
+
+The gate also failed once, correctly, and it is worth recording because it is the failure a
+future reader will hit. A first run under `OMP_NUM_THREADS=1` returned **32,696 of 41,536
+`logistic_regression` rows differing** — by 1e-13 to 5e-10, never more. Nothing was wrong with
+the model: `modeling/train.py` says in as many words that "the lbfgs gradient is a BLAS
+reduction", and a different thread count is a different summation order. Re-run under the
+library default, matching the committed manifest's `blas_threads = "unset (library default)"`,
+it is bit-identical on every row.
+
+That is the strongest available evidence that the gate works: it is sensitive enough to detect
+a thread-count change, so it would certainly detect an actual change to a model.
+
+### 12.2 Every model was UNDERconfident, which is the opposite of what was expected
+
+The calibration slope is the cleanest summary. Perfect is 1.0; below 1 is overconfidence, above
+1 is underconfidence.
+
+| model | slope before | intercept before | slope after Platt |
+|---|---:|---:|---:|
+| `logistic_regression` | 0.611 | −0.142 | 1.015 |
+| `xgboost` | 0.640 | −0.153 | 1.005 |
+| `lightgbm` | 0.618 | −0.157 | 1.015 |
+| `neural_numeric_only` | 0.791 | −0.123 | 1.003 |
+| `xgboost_chain_embeddings` | 0.651 | −0.158 | 1.029 |
+
+Every slope is **below 1**, which on the logit scale means the scores are *not extreme enough*:
+the models hedge toward the base rate. ADR 0020 predicted the opposite for the network — *"a
+network trained under BCE is typically overconfident… a network's overconfidence is the thing
+that component will have to correct."* The measurement does not support it.
+`neural_numeric_only` is the **least** miscalibrated of the five (0.791), which is also why it
+had the least to gain.
+
+The data wins and the divergence is recorded.
+
+### 12.3 Before and after, quarterly mean over 17 folds
+
+`selected` is the frozen production number; Platt was chosen for every fold, so it equals the
+Platt row.
+
+| model | stage | Brier | ECE | MCE | log-loss | slope |
+|---|---|---:|---:|---:|---:|---:|
+| `logistic_regression` | uncalibrated | 0.2382 | 0.0635 | 0.1664 | 0.6723 | 0.611 |
+| | **Platt (frozen)** | **0.2358** | **0.0518** | **0.1297** | **0.6651** | **1.015** |
+| | isotonic | 0.2364 | 0.0509 | 0.1221 | 0.7034 | 0.488 |
+| `xgboost` | uncalibrated | 0.2379 | 0.0621 | 0.1741 | 0.6695 | 0.640 |
+| | **Platt (frozen)** | **0.2350** | **0.0474** | **0.1150** | **0.6623** | **1.005** |
+| | isotonic | 0.2362 | 0.0475 | 0.1218 | 0.6992 | 0.493 |
+| `lightgbm` | uncalibrated | 0.2383 | 0.0644 | 0.1755 | 0.6705 | 0.618 |
+| | **Platt (frozen)** | **0.2351** | **0.0490** | **0.1260** | **0.6625** | **1.015** |
+| | isotonic | 0.2359 | 0.0495 | 0.1185 | 0.6830 | 0.579 |
+| `neural_numeric_only` | uncalibrated | 0.2355 | 0.0563 | 0.1444 | 0.6639 | 0.791 |
+| | **Platt (frozen)** | **0.2347** | **0.0524** | **0.1201** | **0.6618** | **1.003** |
+| | isotonic | 0.2355 | 0.0537 | 0.1301 | 0.7064 | 0.517 |
+| `xgboost_chain_embeddings` ⚠ | uncalibrated | 0.2374 | 0.0619 | 0.1767 | 0.6686 | 0.651 |
+| | **Platt (frozen)** | **0.2346** | **0.0481** | **0.1236** | **0.6617** | **1.029** |
+| | isotonic | 0.2356 | 0.0518 | 0.1230 | 0.7035 | 0.423 |
+
+⚠ `xgboost_chain_embeddings` is an experimental Component 8 derivative (ADR 0022). Its strong
+showing here must not make it the headline; it lost on NDE and its embeddings were explicitly
+not adopted.
+
+Across-fold SD of ECE (a dispersion, not a confidence interval — see §8): before 0.013–0.017,
+after 0.010–0.013. Calibration reduced the *variability* of the error as well as its level.
+
+**Three things to read off this table.**
+
+1. **ECE falls by 20–25% on the four non-neural candidates** and by 7% on the neural one. MCE
+   falls by 17–34% on all five.
+2. **The ordering of models by ECE inverts.** Uncalibrated, `neural_numeric_only` had the best
+   ECE in the project (0.0563). After calibration it has the *second worst* (0.0524), and
+   `xgboost` is best (0.0474). Nothing got worse — the neural model simply started closest to
+   calibrated and had the least room to improve. "Best uncalibrated ECE" and "best calibrated
+   ECE" are different questions, and Component 8's answer to the first does not survive into
+   the second.
+3. **Isotonic's log-loss is worse than the uncalibrated model's** on four of five candidates
+   (0.7064 against 0.6639 for the network), and its post-calibration slope *collapses* to
+   0.42–0.58 — it introduces underconfidence rather than removing it. Its ECE is competitive;
+   its probabilities are not. This is the failure the selection metric was chosen to see (§6),
+   and the reason that metric is log-loss rather than ECE.
+
+### 12.4 The Brier decomposition: the gain is reliability, and only reliability
+
+Quarterly mean, 15 equal-mass bins:
+
+| model | stage | Brier | reliability ↓ | resolution ↑ | uncertainty | within-bin |
+|---|---|---:|---:|---:|---:|---:|
+| `logistic_regression` | before | 0.23817 | 0.00647 | 0.01193 | 0.24362 | +0.00002 |
+| | after | 0.23578 | **0.00410** | 0.01193 | 0.24362 | −0.00001 |
+| `xgboost` | before | 0.23791 | 0.00638 | 0.01190 | 0.24362 | −0.00019 |
+| | after | 0.23498 | **0.00347** | 0.01190 | 0.24362 | −0.00021 |
+| `lightgbm` | before | 0.23834 | 0.00689 | 0.01199 | 0.24362 | −0.00019 |
+| | after | 0.23509 | **0.00367** | 0.01199 | 0.24362 | −0.00021 |
+| `neural_numeric_only` | before | 0.23546 | 0.00494 | 0.01299 | 0.24362 | −0.00010 |
+| | after | 0.23468 | **0.00414** | 0.01299 | 0.24362 | −0.00009 |
+| `xgboost_chain_embeddings` | before | 0.23737 | 0.00634 | 0.01236 | 0.24362 | −0.00023 |
+| | after | 0.23465 | **0.00360** | 0.01236 | 0.24362 | −0.00021 |
+
+This is the most informative table in the component.
+
+- **Reliability falls by 16–46%.** That is the whole of the Brier improvement.
+- **Resolution is unchanged to five decimal places** — identical, not merely similar. A
+  monotone map cannot create the ability to separate high-risk from low-risk establishments,
+  and the measurement says so exactly. If resolution had moved, something would be wrong.
+- **Uncertainty is identical across every model and every stage** (0.24362), because it is a
+  property of the labels — the Brier score of always predicting the base rate. Nothing a model
+  does can change it.
+- The within-bin residual is |0.0002| or less, and it is reported rather than folded away. It
+  is slightly negative because the equal-mass bin means are not the within-bin forecasts; the
+  exact four-term identity is asserted to 1e-12 in the test suite.
+
+Read operationally: **calibration bought better probabilities and bought nothing else, which is
+exactly what it is for.**
+
+### 12.5 Ranking preservation: Platt changed nothing, and that is the success case
+
+Measured two ways. First, inside Component 9, over all 18 folds:
+
+| stage | inversions | new ties | top-k moved | min Spearman ρ | max abs Δ ROC-AUC | max abs Δ p@k |
+|---|---:|---:|---:|---:|---:|---:|
+| Platt | **0** | **0** | **0** | **1.000000000** | **0.000000** | **0.0000** |
+| isotonic | 0 | 38,339–40,452 | 226–265 | 0.948 | 0.0127 | 0.2121 |
+
+Second, and independently, by re-running Component 5's evaluator on the calibrated artifact
+with **no change to Component 5**:
+
+| model | PR-AUC before → after | ROC-AUC before → after | NDE before → after | precision@k_1_day before → after |
+|---|---|---|---|---|
+| `logistic_regression` | 0.532065 → 0.532065 | 0.616281 → 0.616281 | 0.232579 → 0.232579 | 0.657595 → 0.657595 |
+| `xgboost` | 0.534344 → 0.534344 | 0.618767 → 0.618767 | 0.237555 → 0.237555 | 0.630819 → 0.630819 |
+| `lightgbm` | 0.534196 → 0.534196 | 0.617715 → 0.617715 | 0.235458 → 0.235458 | 0.659839 → 0.659839 |
+| `neural_numeric_only` | 0.534328 → 0.534328 | 0.624098 → 0.624098 | 0.248212 → 0.248212 | 0.627285 → 0.627285 |
+| `xgboost_chain_embeddings` | 0.535748 → 0.535748 | 0.622207 → 0.622207 | 0.244429 → 0.244429 | 0.648006 → 0.648006 |
+
+**Every delta is exactly 0.00e+00.** Not approximately — the evaluator returns the identical
+float. Platt is strictly increasing, so it cannot change any pairwise comparison, and the
+measurement confirms the implementation matches the theory.
+
+**Isotonic is the counter-example, and it is instructive.** It produced **zero inversions** — it
+is monotone, as required — but pooled ~40,000 pairs into plateaus. `top_k_indices` breaks ties
+by `target_inspection_id` ascending, so those plateaus moved top-k membership 226–265 times and
+moved precision@k by as much as **0.21** on a fold. That is not a ranking inversion and must not
+be reported as one; it is the cost of a weakly monotone calibrator, and it is a real reason to
+prefer Platt for a component whose output feeds a capacity-limited schedule.
+
+### 12.6 The selection: Platt won every fold, and the per-fold record shows why the prefix matters
+
+| | platt | isotonic |
+|---|---:|---:|
+| per-fold winner (lower inner-select log-loss on that fold alone) | 74 | **16** |
+| prefix winner (the frozen production choice) | **90** | 0 |
+
+Three of the 90 prefix decisions were **declared ties** under the 0.005 threshold and went to
+Platt by the pre-registered preference. The prefix gap (isotonic minus Platt, so positive means
+isotonic is worse) ran from **−0.0047 to +0.1196, mean +0.0576** — isotonic is usually much
+worse and never better by more than the noise floor.
+
+**Method switches: 0.** The frozen method never changed from one fold to the next, for any
+model, which is what makes §12.7's drift series readable as drift.
+
+Had the protocol been strictly per-fold, the method would have flipped **16 times**. That is the
+concrete cost of the design ADR 0025 rejected, measured rather than argued.
+
+### 12.7 Calibration drift, quarter by quarter
+
+ECE per test quarter for `xgboost` (17 quarterly folds, 2022Q2 → 2026Q2):
+
+```
+uncalibrated   .068 .064 .081 .064 .050 .053 .068 .051 .058 .056 .098 .062 .040 .058 .068 .059 .057
+Platt (frozen) .050 .040 .044 .028 .044 .045 .072 .068 .041 .041 .044 .054 .032 .056 .061 .047 .039
+slope after    1.07 1.03 0.89 0.90 1.22 1.15 0.87 1.01 1.01 0.90 0.86 1.64 0.97 0.77 0.94 0.80 1.06
+```
+
+- The calibrated series is **lower in 15 of 17 quarters** for `xgboost`, and never
+  catastrophically higher. Across all five models it is lower in **69 of 85** quarterly cells.
+- It is not monotone. Calibration made ECE **worse on 16 of the 85 quarterly (model, fold)
+  cells** — for `xgboost`, quarters 2023Q4 and 2024Q1. It lowered ECE on all five
+  `covid_shift` cells. This is reported by a warn-severity check that is
+  deliberately incapable of failing: a check that went red on a worse number would create
+  pressure to tune until it went green, which is the loop the temporal protocol exists to
+  prevent.
+- The post-calibration slope wanders between **0.77 and 1.64**. A calibrator fitted on one
+  quarter is applied to the next, and the relationship moves. **This is calibration drift, and
+  it is the thing a retraining trigger has to watch.**
+- Part of the residual is prior shift, which §7 bounded in advance — so it is attributable
+  rather than arguable.
+
+`docs/analysis/figures/calibration_ece_drift.png` plots all four stages for all five models.
+
+### 12.8 A proposed retraining trigger — a design proposal, not a validated fact
+
+The project had **no declared threshold** for this before Component 9; the only prior statement
+is `metrics.ece`'s docstring, that Component 9 "treats its drift over time as the retraining
+trigger". So one is proposed here, and labelled as a proposal.
+
+> **Proposed rule.** Refit the calibrator when either holds on the two most recent completed
+> quarters:
+>
+> * quarterly test ECE exceeds **0.075** in two consecutive quarters, **or**
+> * the calibration slope leaves **[0.80, 1.25]** in two consecutive quarters.
+
+Chosen to sit outside the observed operating range rather than to fit it: across all five
+models the calibrated quarterly ECE ranges **0.0276–0.0766** and the slope **0.630–1.639**
+(for `xgboost` alone, 0.77–1.64). Two consecutive quarters is required
+because a single quarter's ECE moves by about ±0.01 under sampling noise alone (§12.9).
+
+**This threshold has not been validated against an outcome**, because no downstream component
+consumes it yet. It is a starting point for Component 16's deferral gate, not a finding. It was
+written *after* seeing the drift series, and that is stated rather than hidden — unlike the tie
+rule, which had to be frozen first because it *selects* something.
+
+### 12.9 Uncertainty
+
+Within-fold percentile intervals, 1,000 replications, `quarterly-2026Q2`, `xgboost`, ECE:
+
+| stage | scheme | point | 95% CI | SD |
+|---|---|---:|---|---:|
+| uncalibrated | row | 0.0569 | [0.0475, 0.0894] | 0.0105 |
+| uncalibrated | establishment block | 0.0569 | [0.0501, 0.0892] | 0.0099 |
+| Platt (frozen) | row | 0.0393 | [0.0371, 0.0774] | 0.0101 |
+| Platt (frozen) | establishment block | 0.0393 | [0.0347, 0.0752] | 0.0103 |
+
+The two schemes agree closely here, which is worth knowing rather than assuming: this test
+window has 1,638 rows spread over almost as many establishments, so blocking removes little
+dependence. The block scheme is still run and reported for every interval, because the
+agreement is a measurement rather than a property.
+
+Note the intervals are wide relative to the improvement — the before and after CIs overlap on a
+single quarter. **The improvement is clear in the mean across 17 folds, not in any one of
+them**, which is why §12.3 reports the fold mean and §12.7 the drift series separately.
+
+### 12.10 COVID: calibration helps most where it can be trusted least
+
+`covid_shift` is reported separately and **never averaged into the quarterly mean**. Its
+calibration window is 2020-03-01…05-31 — the exact months Chicago's inspection programme was
+suspended — and its base rate falls from 0.683 there to 0.513 in the test window, a **17-point
+prior shift** (§7).
+
+| model | stage | Brier | ECE | MCE | log-loss | slope |
+|---|---|---:|---:|---:|---:|---:|
+| `logistic_regression` | uncalibrated | 0.2522 | 0.1124 | 0.1827 | 0.7121 | 0.510 |
+| | **Platt (frozen)** | 0.2479 | **0.0973** | 0.1360 | 0.6912 | 0.903 |
+| | isotonic | 0.2472 | 0.0861 | 0.1760 | 0.7156 | 0.390 |
+| `xgboost` | uncalibrated | 0.2552 | 0.1253 | 0.2147 | 0.7127 | 0.617 |
+| | **Platt (frozen)** | 0.2507 | **0.1130** | 0.1779 | 0.6984 | 0.753 |
+| `lightgbm` | uncalibrated | 0.2606 | 0.1518 | 0.1926 | 0.7219 | 0.772 |
+| | **Platt (frozen)** | 0.2510 | **0.1168** | 0.1538 | 0.6981 | 0.848 |
+| `neural_numeric_only` | uncalibrated | 0.2574 | 0.1364 | 0.2176 | 0.7230 | 0.564 |
+| | **Platt (frozen)** | 0.2488 | **0.1079** | 0.1353 | 0.6928 | 0.875 |
+| `xgboost_chain_embeddings` | uncalibrated | 0.2633 | 0.1547 | 0.2342 | 0.7357 | 0.585 |
+| | **Platt (frozen)** | 0.2552 | **0.1346** | 0.1986 | 0.7094 | 0.762 |
+
+**Calibration did not collapse under distribution shift — it helped, substantially.** ECE falls
+by 10–23% on every model; Brier, log-loss and MCE improve on every model.
+
+But three things say not to trust it:
+
+1. **The level is roughly double the quarterly level** — 0.097–0.135 against 0.047–0.052.
+2. **The slope only reaches 0.75–0.90, not 1.0.** On the quarterly folds Platt returns the slope
+   to 1.00–1.03 essentially every time. Here it cannot, because the residual miscalibration is
+   *prior shift* — the base rate moved 17 points between the window the calibrator learned on
+   and the window it was applied to — and a monotone recalibration fitted on the earlier window
+   cannot remove that.
+3. **Isotonic beat Platt on ECE here for `logistic_regression`** (0.0861 against 0.0973). The
+   protocol chose Platt, on evidence from the calibration window, before this number existed.
+   Reporting it is the evidence that the choice was not made on test performance — had it been,
+   isotonic would have been selected for that cell.
+
+`covid_shift` has now behaved differently from the quarterly folds in Components 5, 6, 7, 8 and
+9. That is five for five.
+
+---
 
 ## 13. What Component 10 should know
 
-_To be completed after the production run._
+1. **The artifact to start from** is
+   `data/processed/predictions/calibrated_predictions_20260824T153850Z.parquet` — 207,680 rows,
+   five calibrated models × 18 folds, readable by `evaluation.contract.read_predictions` with no
+   translation.
+2. **`trained_through` is `calibration_end`, not `train_end`.** The estimator's weights stop at
+   `train_end` (`base_model_trained_through`); the calibrator learned through `calibration_end`.
+   The first date a row could have been produced operationally is
+   `calibrated_prediction_available_from = test_start`. Do not describe this artifact as trained
+   only through `train_end`.
+3. **The probabilities are now worth reading as probabilities.** Quarterly slope 1.00–1.03, ECE
+   0.047–0.052. A predicted 0.30 happens about 30% of the time, within roughly 5 percentage
+   points on average.
+4. **The ranking is untouched** — every ranking metric is bit-identical to Components 6–8's. Any
+   Component 10 result that changes NDE, PR-AUC or precision@k is not coming from calibration.
+5. **`covid_shift` probabilities are the least trustworthy in the project** (§12.10). A cost
+   threshold set on quarterly evidence should be expected to misbehave under a regime change of
+   that size.
+6. **The calibrator must not be refitted on a test quarter**, including "just to check". That
+   reintroduces exactly the leak ADR 0012 built the calibration window to prevent.
+7. **Seed averaging is still open.** Component 8's neural advantage (0.0053 ROC-AUC) remains
+   smaller than its own five-seed spread (0.0058), and Component 9 calibrated seed 42 only — by
+   decision, to keep the bit-identity gate meaningful, not by oversight. A seed-averaged base
+   model would be a *new* model and would need Components 6–8's evaluation re-run.
+8. **The proposed retraining trigger in §12.8 is a proposal.** It has not been validated against
+   any outcome, and it was written after seeing the drift series.

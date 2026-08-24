@@ -7,15 +7,17 @@ establishments to inspect next**, by combining a calibrated risk model with a
 deterministic statutory policy engine and constrained scheduling. Most of that
 system does not exist yet.
 
-This repository is being built **one component at a time**. Only Component 1 is
-implemented. See [STATUS.md](STATUS.md) for the authoritative project state.
+This repository is being built **one component at a time**. See
+[STATUS.md](STATUS.md) for the authoritative project state.
 
 ---
 
 ## Current status
 
-**Components 1-4 complete: ingestion, entity resolution, target construction,
-and as-of feature engineering.**
+**Components 1-9 complete: ingestion, entity resolution, target construction,
+as-of feature engineering, temporal evaluation, baseline risk models,
+gradient-boosted risk models, a neural network with entity embeddings, and
+probability calibration.**
 
 What exists today:
 
@@ -36,16 +38,79 @@ What exists today:
 * **As-of feature engineering**: 26 historical features per prediction
   opportunity, each computed strictly from inspections dated *before* that
   inspection, with the boundary enforced in one place and re-checked on every row.
-* 745 unit and integration tests with mocked HTTP, plus an opt-in live smoke
+* **Temporal evaluation**: a rolling-origin backtest with 17 quarterly folds, a
+  model-agnostic prediction contract, and a five-schedule re-ordering simulation
+  that measures whether a risk ranking would have surfaced violations earlier
+  than the city's actual inspection order -- with the calibration window placed
+  strictly between training and test, before any model exists to need it.
+* **Baseline risk models**: three L2 logistic regressions, refitted once per
+  fold (54 fits), with all preprocessing statistics taken from the training
+  window only. The best reaches NDE 0.2326 and +5.70 mean days-earlier against
+  the strongest heuristic's 0.1845 and +4.47, winning on all 17 quarterly folds.
+* **Gradient-boosted risk models**: XGBoost and LightGBM on the same 26 features,
+  each tuned with 100 Optuna trials per fold set under a protocol where every
+  hyperparameter is selected from data strictly earlier than any test window. The
+  measured answer is a **small** improvement — NDE 0.2326 → 0.2376, about +2%
+  relative — that the logistic baseline beats on 7 of 17 individual folds, and that
+  sits inside the seasonality sensitivity band. Two very different nonlinear
+  learners landing within 0.005 of a penalised GLM is evidence the ceiling is the
+  feature representation, not the estimator.
+* 1,911 unit and integration tests with mocked HTTP, plus an opt-in live smoke
   test.
+* **Neural network with entity embeddings**: a PyTorch MLP (embeddings for chain,
+  facility type, community area and ZIP, concatenated with the same 30 standardised
+  columns Components 6 and 7 use, through 256 and 128 hidden units to a single logit),
+  trained under the same rolling-origin folds with early stopping carved from the *end
+  of each training window* so no calibration or test row can influence when a fit stops.
+  Two results point opposite ways. The network **on the same 26 features and nothing
+  else** posts the best NDE in the project — **0.2482** against XGBoost's 0.2376 — and
+  the best calibration (Brier 0.2355, ECE 0.0563), winning **12 of 17 folds**. But
+  **adding the entity embeddings made it markedly worse** (0.2215), every ablation
+  improves on the full model, and the learned chain vectors are statistically
+  indistinguishable from a random table. The neural advantage is also the same size as
+  its own five-seed spread (0.0053 against 0.0058), so it is **suggestive, not
+  decisive**, and is not a deployment recommendation.
 
-Nothing else. No models, no evaluation framework, no scheduling.
+* **Probability calibration**: the models ranked well but their probabilities were wrong
+  in a specific direction — **every one of the five candidates was underconfident**, with a
+  calibration slope of 0.61–0.79 where 1.0 is perfect. Platt scaling, fitted per fold on the
+  calibration window that Components 5–8 deliberately left untouched, pulls the slope to
+  **1.00–1.03** and cuts ECE by **20–25%** (e.g. XGBoost 0.0621 → 0.0474) and MCE by 17–34%.
+  The Brier decomposition shows why that is the right shape of answer: **reliability falls
+  16–46% while resolution is unchanged to five decimal places** — a monotone map cannot
+  create the ability to separate risk, and the measurement says so exactly. **The ranking is
+  bit-for-bit untouched**: PR-AUC, ROC-AUC, NDE and precision@k all move by exactly
+  0.00e+00, verified by re-running the Component 5 evaluator on the calibrated artifact.
+  Two things had to be got right rather than assumed. The scores to calibrate **did not
+  exist** — no component had ever scored a calibration window and no fitted model was
+  persisted anywhere — so Component 9 re-executes Components 6–8's unchanged fits behind a
+  **bit-identity gate** (207,680 rows compared with `==`, zero mismatches). And the choice
+  between Platt and isotonic is made on an *expanding prefix* of folds rather than a pool,
+  because fold N's calibration window **is** fold N−1's test window. Platt won all 90
+  (model, fold) cells under a rule frozen in an ADR before any test window was opened.
+
+Nothing else. No scheduling, no policy engine, no agent. The
+evaluation harness was built *before* any model existed, so the first model was
+measured by a yardstick it did not get to shape — and the models report no metrics
+of their own; they emit scores and hand them to the evaluator.
+
+**Read the caveats with the headline.** PR-AUC 0.5321 sits against a no-skill floor
+of 0.4307, so the gain is +0.10. 43.24% of violations are still discovered *later*
+than the city's actual order, because re-ordering under a fixed capacity is
+zero-sum. And on the distribution-shift fold the model ordering **inverts** —
+selecting on the rolling folds would have picked the wrong model for 2020. Calibration
+**helped** on that fold (ECE −10 to −23%) but reached a slope of only 0.75–0.90, because the
+base rate moves 17 points between its calibration and test windows and **prior shift is not
+something a monotone recalibration can fix**. And calibration made ECE *worse* on 16 of the
+85 quarterly (model, fold) cells; that is reported by a check deliberately incapable of failing, because
+a check that went red on a worse number would create pressure to tune until it went green.
 
 ---
 
 ## Architecture
 
-Four components, one path from the API to a model-ready training table:
+Five components: one path from the API to a model-ready training table, and one
+honest way to measure a ranking built on top of it.
 
 ```text
 Chicago Data Portal (Socrata SODA 2.1)
@@ -143,7 +208,138 @@ Chicago Data Portal (Socrata SODA 2.1)
         data/processed/features/
           as_of_features_<UTC>.parquet             57,727 rows x 33 columns
           manifest_as_of_features_<UTC>.json
+
+
+        ---- Component 5: temporal evaluation --------------------------
+
+        as-of feature table
+                │
+                ▼
+        rolling-origin folds                      evaluation/folds.py
+                │  TRAIN (expanding) -> CAL -> TEST, quarterly
+                │  17 folds, 2022Q2 .. 2026Q2, partial windows excluded
+                ▼
+        prediction contract                       evaluation/contract.py
+                │  exact coverage · no imputation · declared horizon
+                ▼
+        five reference schedules                  evaluation/simulate.py
+                │  optimal · model · business-as-usual · random · worst
+                │  capacity held constant by construction
+                ▼
+        metrics + simulation + sensitivity        evaluation/metrics.py
+                │  ROC-AUC · PR-AUC · precision@k · discovery curves
+                │  days-earlier distribution · seasonal re-draw
+                ▼
+        data/processed/evaluation/
+          evaluation_folds_<UTC>.parquet           18 folds
+          evaluation_metrics_<UTC>.parquet         2,808 rows, tidy long
+          discovery_curves_<UTC>.parquet           373,986 points
+          simulation_summary_<UTC>.parquet         504 rows
+          seasonality_ / sensitivity_<UTC>.parquet
+          manifest_evaluation_folds_<UTC>.json
+
+
+        ---- Component 6: baseline risk models -------------------------
+
+        as-of feature table + the same folds
+                │
+                ▼
+        one model per fold, refitted                modeling/train.py
+                │  train = assign_split(...) == "train", sorted canonically
+                │  impute + scale fitted on TRAINING ROWS ONLY
+                │  3 models x 18 folds = 54 fits
+                ▼
+        scores                                      modeling/predict.py
+                │  P(target = 1); higher = higher risk
+                │  trained_through = fold.train_end, never calibration_end
+                ▼
+        data/processed/predictions/                 <- a third artifact kind
+          baseline_predictions_<UTC>.parquet         124,608 rows
+          baseline_coefficients_<UTC>.parquet        1,530 rows
+          baseline_training_log_<UTC>.parquet        54 rows
+          manifest_baseline_predictions_<UTC>.json
+                │
+                │  sentinel evaluate --predictions <path>
+                ▼
+        back through Component 5's contract and metrics — unchanged,
+        model-agnostic, and the sole source of every reported number
+
+        ---- Component 7: gradient-boosted risk models -----------------
+
+        data/processed/features/as_of_features_<UTC>.parquet
+                │
+                │  sentinel tune-boosting --trials 100    boosting/tuning.py
+                │  region per fold set = first fold's train_start..calibration_end
+                │     quarterly    2018-07-01..2022-03-31  <  first test 2022-04-01
+                │     covid_shift  2018-07-01..2020-05-31  <  first test 2020-06-01
+                │  6 / 2 inner rolling-origin folds, each with the outer gap
+                │  early stopping happens HERE and only here
+                ▼
+        data/processed/tuning/                      <- a fourth artifact kind
+          tuning_trials_<UTC>.parquet                400 rows, 0 failed
+          manifest_tuning_trials_<UTC>.json
+                │
+                │  the winner is FROZEN BY HAND into definitions.TUNED_PARAMS,
+                │  as a literal, so the choice appears in a diff
+                ▼
+        one model per fold, refitted                boosting/train.py
+                │  matrix = 26 features + 4 indicators
+                │  NULL -> NaN, routed natively: NOT imputed, NOT scaled
+                │  frozen n_estimators rounds, NO eval_set, NO early stopping
+                │  3 models x 18 folds = 54 fits
+                ▼
+        scores                                      boosting/predict.py
+                │  RAW predict_proba[:, 1]; higher = higher risk
+                │  trained_through = fold.train_end — literally, not nearly
+                ▼
+        data/processed/predictions/                 <- its own slug
+          boosted_predictions_<UTC>.parquet          124,608 rows
+          boosted_importances_<UTC>.parquet          1,620 rows (diagnostic only)
+          boosted_training_log_<UTC>.parquet         54 rows
+          manifest_boosted_predictions_<UTC>.json
+                │
+                │  sentinel evaluate --predictions <path>
+                ▼
+        the same Component 5 contract, unchanged. Component 6's artifact is
+        untouched — verified byte-identical — so "did C7 beat C6?" stays answerable
 ```
+
+**Component 4 asks "can my features see the future?". Component 5 asks "can my
+evaluation see the future?". Component 6 asks "can my model see the future?"
+Component 7 asks "can *I* see the future?"**
+They are three different questions. A feature table with a perfect temporal
+boundary still produces a dishonest result if it is split randomly, or if
+calibration touches the test period. A random split over this table would train on
+2024 and score on 2022; at a real decision point in 2022, 2024 has not happened.
+
+And the third has a failure mode the first two cannot catch: an imputation median or
+a scaler mean computed over the whole table *before* splitting. The fold boundary is
+respected by the fit while the transform already knows the future, and nothing about
+the split looks wrong. Component 6 therefore re-derives every preprocessing
+statistic from the training rows and compares it to what was fitted.
+
+The fourth question is different in kind, because its failure mode is a **person**.
+Fit a booster, read a test metric, change `max_depth`, refit, keep the better one —
+and the resulting artifact passes every check above. The predictions cover the test
+window exactly, the declared horizon is honest, no training row is misdated. The model
+is simply better than it should be, by an amount nobody can measure. Component 7 makes
+that structurally impossible rather than merely discouraged: each fold set's
+hyperparameters come from a search confined to a region that ends before that fold set's
+first test window, and a check re-derives both dates from the fold definitions on every
+run. See ADR 0017.
+
+The estimand is stated before any result: Component 5 measures the **re-ordering**
+of inspections that actually occurred. There are no labels for establishments
+nobody visited, so coverage cannot be evaluated and no causal claim is made.
+Component 6 does not change this — a trained model re-orders the same inspections
+under the same fixed capacity, which is why moving one establishment earlier moves
+another later, and why 43.24% of violations are still found later than the city's
+actual order even under the best model.
+
+Reasoning in
+[`docs/analysis/temporal_evaluation_findings.md`](docs/analysis/temporal_evaluation_findings.md),
+[ADR 0012](docs/decisions/0012-rolling-origin-temporal-evaluation.md) and
+[ADR 0013](docs/decisions/0013-evaluation-results-are-artifacts-not-inputs.md).
 
 The **as-of rule** is the whole of Component 4: a feature for the row at
 `inspection_date = d` may use only records dated **strictly before** `d`. The
@@ -393,6 +589,157 @@ duckdb.sql("""
 
 ---
 
+### Training the baseline models
+
+```bash
+# three models x 18 folds = 54 fits, ~30 seconds
+uv run sentinel train-baselines
+
+# one model only; the flag is repeatable
+uv run sentinel train-baselines --models logistic_regression
+
+# train and validate without writing anything
+uv run sentinel train-baselines --dry-run --report
+```
+
+Exits non-zero if any of the fifteen error-severity checks fails. The one worth
+knowing about re-derives every imputation median from the fold's training rows and
+compares it to the fitted imputer — because a preprocessing statistic computed over
+the whole table before splitting is leakage that no fold boundary catches: the
+boundary is respected by the *fit* while the *transform* already knows the future.
+
+This command reports **no metrics**. It writes a prediction artifact and points you
+at the evaluator.
+
+---
+
+### Tuning and training the boosted models
+
+Tuning and training are separate commands, and separate from evaluation.
+
+```bash
+# 100 Optuna trials per model per fold set: 4 studies, 400 trials, ~9.5 minutes
+uv run sentinel tune-boosting --trials 100 --report
+
+# one model, one fold set; both flags are repeatable
+uv run sentinel tune-boosting --models xgboost --fold-set quarterly --trials 20
+
+# search without writing anything
+uv run sentinel tune-boosting --dry-run --report
+```
+
+`tune-boosting` prints each study's search region beside its fold set's first test
+start, so the safety property is legible rather than buried in a manifest:
+
+```text
+tuning regions (each must end before its fold set's first test start):
+  xgboost-quarterly:   2018-07-01..2022-03-31  <  first test 2022-04-01
+  xgboost-covid_shift: 2018-07-01..2020-05-31  <  first test 2020-06-01
+```
+
+It then prints the parameter block to paste into `boosting/definitions.py`. **It edits
+no source file.** The manual freeze is deliberate: a parameter set loaded from disk at
+training time could change without a diff, and freezing is only meaningful if it cannot.
+
+```bash
+# three models x 18 folds = 54 fits, ~21 seconds; uses the frozen parameters
+uv run sentinel train-boosting
+
+# one model only; repeatable
+uv run sentinel train-boosting --models lightgbm
+
+# train and validate without writing anything
+uv run sentinel train-boosting --dry-run --report
+```
+
+Exits non-zero if any of the fifteen error-severity checks fails. Two are specific to
+this component: one rebuilds each fold's matrix and asserts its NaN pattern equals the
+source frame's NULL pattern cell-for-cell — catching an accidentally reintroduced
+imputer — and one asserts no final fit carries an early-stopping parameter, because that
+would mean reading a window later than the declared horizon.
+
+Like `train-baselines`, this reports **no metrics**, and it writes to its own slug so
+Component 6's artifact stays byte-identical.
+
+### Training the neural models
+
+```bash
+# Component 8's experimental categorical layer. Carries chain, facility type, community
+# area and ZIP forward from the establishment's most recent EARLIER inspection. Not a
+# Component 4 feature table -- see ADR 0022. ~0.5 s
+uv run sentinel build-neural-categoricals --report
+
+# The learning-rate sweep: 5 rates x 8 inner folds over 2 studies, ~9 minutes. Prints a
+# block to paste into neural/definitions.py; it edits no source file.
+uv run sentinel tune-neural --report
+
+# 9 models x 18 folds, plus 4 extra seeds x 18 folds for the reproducibility experiment.
+# 234 fits, ~33 minutes single-threaded on CPU. Writes the figures too.
+uv run sentinel train-neural --report
+
+# Component 5 scores it, exactly as it scores Components 6 and 7.
+uv run sentinel evaluate --predictions data/processed/predictions/neural_predictions_<stamp>.parquet --report
+
+# Component 9 -- fit and freeze the probability calibrators (~25 min).
+# Run WITHOUT an OMP_NUM_THREADS override: the bit-identity gate is thread-sensitive.
+uv run sentinel calibrate --report
+uv run sentinel evaluate \n  --predictions data/processed/predictions/calibrated_predictions_<stamp>.parquet --report
+```
+
+Every fit is single-threaded on the CPU with `torch.use_deterministic_algorithms(True)`,
+so re-runs are bit-identical. A CUDA device on the build machine is deliberately unused:
+GPU reductions are not bit-reproducible, and that is the standard every leakage test in
+this repository is written against. See [ADR 0020](docs/decisions/0020-pytorch-and-matplotlib-as-runtime-dependencies.md).
+
+### Running the temporal evaluation
+
+```bash
+# heuristics only: 17 quarterly folds + the distribution-shift fold, ~165 seconds
+uv run sentinel evaluate
+
+# heuristics plus the fitted models, ~238 seconds
+uv run sentinel evaluate \
+  --predictions data/processed/predictions/baseline_predictions_<stamp>.parquet
+
+# just the fold table -- fast, and enough to audit the split
+uv run sentinel evaluate --folds-only --report
+
+# evaluate and validate without writing anything
+uv run sentinel evaluate --dry-run --report
+```
+
+Exits non-zero if any of the fourteen error-severity checks fails — including
+the seven leakage checks, the capacity-conservation check, and the
+business-as-usual identity. A failure means the evaluation itself could see the
+future, which would make every number it reports confidently wrong.
+
+`--predictions` is where a model enters. The evaluator does not know, and must not
+know, what produced a score: it validates the claim (exact coverage, no nulls, a
+declared training horizon inside the fold) and then measures it exactly as it
+measures the six built-in heuristics.
+
+```python
+import duckdb
+
+# how did each schedule do, per fold?
+duckdb.sql("""
+    SELECT fold_id, schedule_name, model_name,
+           normalized_discovery_efficiency, mean_days_earlier,
+           std_days_earlier, fraction_worse
+    FROM read_parquet('data/processed/evaluation/simulation_summary_*.parquet')
+    WHERE fold_set = 'quarterly'
+    ORDER BY fold_id, normalized_discovery_efficiency DESC
+    LIMIT 10
+""").show()
+```
+
+**Read the estimand before the numbers.** Component 5 measures the re-ordering of
+inspections that actually occurred; it cannot evaluate coverage, and it makes no
+causal claim. See
+[`docs/data_contracts/temporal_evaluation.md`](docs/data_contracts/temporal_evaluation.md) §1.
+
+---
+
 ## Output
 
 Every ingestion run writes two files into `data/raw/food_inspections/`:
@@ -427,6 +774,30 @@ The short version: `establishment_assignments` maps every `inspection_id` to an
 `establishment_id` and deliberately carries no dates, counts or outcomes, so a
 downstream join cannot pull whole-history information into a training row.
 
+The processed layer now holds **five** kinds of thing, each with its own directory and
+its own prohibition:
+
+```text
+data/processed/features/      model-ready tables. Trainable.               ADR 0011
+data/processed/predictions/   model outputs. Never trainable.              ADR 0014
+data/processed/evaluation/    measurements about models. Never trainable.  ADR 0013
+data/processed/tuning/        hyperparameter search trials.                ADR 0018
+data/processed/neural/        Component 8's experimental categoricals.     ADR 0022
+data/processed/calibration/   fitted calibrators and their diagnostics.    ADR 0024
+```
+
+The fifth is the newest and the most easily misread. Component 4's feature table has no
+categorical column at all, so Component 8 carries chain, facility type, community area
+and ZIP forward as-of from the raw snapshot into a layer of its own. It is **not a
+feature table**, `feature_definition_version` is unchanged at `v1`, and no other
+component may join it onto anything.
+
+**Nothing in the last three may ever be joined onto a feature table**, and no number in
+the tuning layer is a result — every one is measured on a validation window that is
+*training* data for the folds the chosen parameters are then used on. A search's best
+PR-AUC looks exactly like a result, which is why it is filed where it cannot be mistaken
+for one.
+
 ---
 
 ## Testing
@@ -437,7 +808,7 @@ uv run pytest -v
 uv run pytest -m live         # opt-in: makes one real call to the Chicago API
 ```
 
-745 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
+1,776 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
 transport layer with `respx`, so real request
 construction, status handling, pagination and retry logic are all exercised
 without touching the network. Live tests are marked and deselected by default,
@@ -459,7 +830,10 @@ uv run mypy src/sentinel scripts
 src/sentinel/
   config.py                    configuration (env-driven, no hardcoded values)
   logging_setup.py             logging configuration
-  cli.py                       argparse CLI: ingest, query, resolve
+  cli.py                       argparse CLI: ingest, query, resolve,
+                               build-target, build-features,
+                               train-baselines, tune-boosting,
+                               train-boosting, evaluate
   manifest.py                  generic manifest helpers (hash, read, write)
   ingest/
     socrata.py                 paginating, retrying Socrata client
@@ -467,6 +841,38 @@ src/sentinel/
     manifest.py                ingestion provenance model
   query/
     duckdb_queries.py          DuckDB over the raw Parquet
+  boosting/                    Component 7: gradient-boosted risk models
+    definitions.py             BOOSTING_REGISTRY, the declared SEARCH_SPACE,
+                               the frozen TUNED_PARAMS, import-time guard
+    preprocess.py              the tree matrix: no imputation, no scaling
+    tuning.py                  the search that cannot reach a test window
+    train.py                   one fit per fold; no early stopping
+    predict.py                 predict_proba -> raw score, direction fixed
+    models.py                  FittedBooster: a typed facade over two libraries
+    validate.py                twenty checks, each re-derived from the data
+    writer.py                  four output schemas
+    build.py                   tune_boosting / train_boosting (the only I/O)
+  modeling/                    Component 6: baseline risk models
+    definitions.py             MODEL_REGISTRY; partitions derived from
+                               Component 4's FEATURE_SPECS; import-time guard
+    preprocess.py              matrix construction + the train-only pipeline
+    train.py                   one fit per fold; the canonical sort
+    predict.py                 predict_proba -> score, direction fixed
+    models.py                  FittedModel: a typed facade over sklearn
+    validate.py                fifteen checks, each re-derived from the data
+    writer.py                  three output schemas
+    build.py                   orchestration (the only module doing I/O)
+  evaluation/                  Component 5: temporal evaluation
+    models.py                  FoldSpec (refuses a leaky fold), PredictionSet
+    folds.py                   rolling-origin fold construction
+    contract.py                the model-agnostic prediction contract
+    metrics.py                 hand-rolled metrics, sklearn-verified in tests
+    rankers.py                 deterministic baselines; nothing is fitted
+    simulate.py                the slot model and the five schedules
+    sensitivity.py             de-trended seasonality + label re-draw
+    validate.py                the seven leakage checks, re-derived
+    writer.py                  six output schemas
+    build.py                   orchestration (the only module doing I/O)
   features/                    Component 4: as-of feature engineering
     definitions.py             FeatureSpec list; the single source of truth
     historical.py              the range join and the temporal boundary
@@ -494,12 +900,14 @@ src/sentinel/
 scripts/profile_entities.py    read-only entity profiling (analysis, not library)
 scripts/profile_target.py      read-only target profiling
 scripts/profile_features.py    read-only history-availability profiling
+scripts/profile_evaluation.py  read-only evaluation-surface profiling
+scripts/profile_baselines.py   read-only model profiling; train windows ONLY
 tests/                         unit + integration tests; tests/fixtures/ holds
                                real regression cases as literal Python
 data/raw|interim|processed/    data layers; contents gitignored, manifests kept
 docs/analysis/                 empirical findings
 docs/api/                      verified API behaviour
-docs/data_contracts/           raw dataset + entity resolution output contracts
+docs/data_contracts/           one contract per component output
 docs/decisions/                architecture decision records
 ```
 
@@ -507,7 +915,7 @@ docs/decisions/                architecture decision records
 
 ## Project roadmap
 
-Components 1-4 are implemented. Everything below them is **planned, not
+Components 1-7 are implemented. Everything below them is **planned, not
 implemented** — no code for any of it exists in this repository.
 
 | # | Component | Status |
@@ -516,13 +924,13 @@ implemented** — no code for any of it exists in this repository.
 | 2 | Entity resolution | **Implemented** |
 | 3 | Target construction | **Implemented** |
 | 4 | As-of feature engineering | **Implemented** |
-| 5 | Temporal evaluation framework | Next |
-| 6 | Baseline models | Not implemented |
-| 7 | XGBoost / LightGBM | Not implemented |
-| 8 | Neural baseline | Not implemented |
-| 9 | Probability calibration | Not implemented |
-| 10 | Inspector-effect modelling | Not implemented |
-| 11 | SHAP explainability | Not implemented |
+| 5 | Temporal evaluation framework | **Implemented** |
+| 6 | Baseline risk models | **Implemented** |
+| 7 | XGBoost / LightGBM | **Implemented** |
+| 8 | Neural baseline | **Implemented** |
+| 9 | Probability calibration | **Implemented** |
+| 10 | Inspector-effect modelling | **Blocked** — the dataset has no inspector field (ADR 0019) |
+| 11 | SHAP explainability | Not implemented — C7 emits split-gain importances as a diagnostic only |
 | 12 | Fairness auditing | Not implemented |
 | 13 | Deterministic statutory policy engine | Not implemented |
 | 14 | Constrained scheduling | Not implemented |
@@ -534,9 +942,10 @@ implemented** — no code for any of it exists in this repository.
 | 20 | Audit trail | Not implemented |
 | 21 | Frontend demo | Not implemented |
 
-Technologies for later components (modelling libraries, OR-Tools, LangGraph, a
-frontend) are deliberately absent from `pyproject.toml`. Each is introduced only
-when the component that needs it is built.
+Technologies for later components (PyTorch, OR-Tools, LangGraph, a frontend) are
+deliberately absent from `pyproject.toml`. Each is introduced only when the component
+that needs it is built — scikit-learn and numpy arrived with Component 6 (ADR 0015),
+and xgboost, lightgbm and optuna with Component 7 (ADR 0016).
 
 ---
 

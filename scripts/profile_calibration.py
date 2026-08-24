@@ -71,7 +71,6 @@ from sentinel.config import load_settings  # noqa: E402
 from sentinel.evaluation import folds as folds_module  # noqa: E402
 from sentinel.evaluation.metrics import (  # noqa: E402
     DEFAULT_CALIBRATION_BINS,
-    calibration_bins,
     log_loss,
 )
 from sentinel.evaluation.models import FoldSpec  # noqa: E402
@@ -141,6 +140,15 @@ def _logit(p: float) -> float:
     ``1 - p`` cancels catastrophically, while ``log1p`` is accurate there by construction.
     """
     return math.log(p) - math.log1p(-p)
+
+
+def _number(value: object, default: float = 0.0) -> float:
+    """Narrow a polars aggregate to a float.
+
+    Polars types a column aggregate as a wide union, so every arithmetic use of one would
+    otherwise need an ignore comment. ``evaluation.folds`` narrows once for the same reason.
+    """
+    return float(value) if isinstance(value, int | float) else default
 
 
 def _fmt(value: float | None, places: int = 4) -> str:
@@ -310,9 +318,9 @@ def inner_split_placement(frame: pl.DataFrame, scores: pl.DataFrame | None) -> s
                 fold.fold_id,
                 str(cut),
                 str(fit.height),
-                _fmt(float(fit["target"].mean() or 0.0)),
+                _fmt(_number(fit["target"].mean())),
                 str(select.height),
-                _fmt(float(select["target"].mean() or 0.0)),
+                _fmt(_number(select["target"].mean())),
                 _fmt(select.height / window.height if window.height else None, 3),
                 ", ".join(flags) if flags else "ok",
             ]
@@ -600,7 +608,7 @@ def establishment_recurrence(frame: pl.DataFrame, scores: pl.DataFrame | None) -
                     str(counts.height),
                     str(repeated.height),
                     _fmt(window.height / counts.height, 3),
-                    str(int(counts["len"].max() or 0)),
+                    str(int(_number(counts["len"].max()))),
                 ]
             )
     return _table(

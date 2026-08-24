@@ -90,6 +90,101 @@ class Settings(BaseSettings):
         return self.processed_dir / "features"
 
     @property
+    def evaluation_processed_dir(self) -> Path:
+        """Where Component 5 writes fold definitions, metrics and curves.
+
+        Processed rather than interim, but beside ``features/`` rather than
+        inside it: these are evaluation *results*, not a model-ready table, and
+        nothing downstream trains on them. See ADR 0013.
+        """
+        return self.processed_dir / "evaluation"
+
+    @property
+    def predictions_processed_dir(self) -> Path:
+        """Where Component 6 writes model scores, coefficients and training logs.
+
+        A third kind of processed artifact, and a sibling of the other two rather
+        than a child of either. Predictions are model *outputs*: they fail ADR
+        0011's model-ready test because they carry no features, and they fail ADR
+        0013's evaluation test because they are produced *before* scoring and are
+        the evaluator's input rather than its result.
+
+        **Nothing here may be joined onto a feature table.** Co-location with
+        ``features/`` is exactly the invitation to join, and a score joined onto a
+        training table is the most damaging leakage available. See ADR 0014.
+        """
+        return self.processed_dir / "predictions"
+
+    @property
+    def tuning_processed_dir(self) -> Path:
+        """Where Component 7 writes hyperparameter search trials.
+
+        A fourth kind of processed artifact. A trials table is neither a
+        model-ready table (ADR 0011), nor a model output (ADR 0014), nor a
+        measurement of a model's performance (ADR 0013): it records what a
+        search tried and what each attempt scored on a *validation* window that
+        is training data for every fold the chosen parameters will be used on.
+
+        **Nothing here may be joined onto a feature table, and no number in it
+        is a result.** A validation PR-AUC read as a headline metric would be an
+        in-sample number reported as an out-of-sample one. See ADR 0018.
+        """
+        return self.processed_dir / "tuning"
+
+    @property
+    def neural_processed_dir(self) -> Path:
+        """Where Component 8 writes its experimental categorical table.
+
+        A fifth kind of processed artifact, and the only one in the project that
+        is a model *input* without being a Component 4 feature table.
+
+        Component 4's contract has no categorical column. The four families
+        Component 8 embeds -- chain, facility type, community area and zip --
+        are carried as-of from the raw snapshot and from Component 2's entity
+        resolution by Component 8 itself, and they are deliberately not promoted
+        into ``features/``. Putting them there would make them features, and
+        adding a feature belongs to Component 4 behind a bumped
+        ``feature_definition_version``.
+
+        **Nothing here is a feature and nothing here may be joined onto a
+        feature table by any other component.** It exists so that one
+        experiment's inputs are visible, auditable and separable from the
+        production feature set. See ADR 0022.
+        """
+        return self.processed_dir / "neural"
+
+    @property
+    def calibration_processed_dir(self) -> Path:
+        """Where Component 9 writes its calibrators and their diagnostics.
+
+        A sixth kind of processed artifact. The grain is a *fitted correction*
+        or a measurement of one: the calibration-window base scores, the fitted
+        Platt parameters, the isotonic breakpoints, the per-quarter drift, the
+        Brier decomposition, the ranking-preservation deltas and the bootstrap
+        intervals.
+
+        Not ``evaluation/``, and that separation is load-bearing. Component 9's
+        drift table carries an ``ece`` per (model, fold) measured on the test
+        window, and so does ``evaluation_metrics_*.parquet``. Filed together
+        there would be two authoritative ECEs for the same cell, with no
+        convention saying which is the project's answer. Component 5 remains the
+        only producer of the headline metrics; these are the diagnostics of a
+        correction.
+
+        The calibrated predictions themselves are **not** here -- they are in
+        ``predictions/`` under their own slug, where ADR 0014 said to put them,
+        which is what lets ``sentinel evaluate --predictions`` read them with no
+        change to Component 5. The selection log is in ``tuning/``, where ADR
+        0018 said to put it.
+
+        **Nothing here may be joined onto a feature table, and the
+        calibration-window scores in particular must never reach a fit.** Those
+        rows sit after ``train_end``; a base model that saw them would have been
+        fitted past its own declared horizon. See ADR 0024.
+        """
+        return self.processed_dir / "calibration"
+
+    @property
     def target_interim_dir(self) -> Path:
         """Where Component 3 writes the prediction target.
 

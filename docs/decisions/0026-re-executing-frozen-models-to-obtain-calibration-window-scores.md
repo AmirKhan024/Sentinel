@@ -97,6 +97,27 @@ The persisted table is used instead as an **error-severity check**,
 `chain_embeddings_reproduce_the_committed_table`, which asserts the re-fitted donor's chain vectors
 equal the committed table bit for bit and that the vocabulary identity above holds.
 
+### The gate passed, and it caught something on the way
+
+Measured on the production candidate set: **207,680 test rows across 5 models and 18 folds,
+zero mismatches.** Every candidate reproduces bit-for-bit, including `neural_numeric_only`
+and the embedding-fed `xgboost_chain_embeddings`, whose donor network is 234 gradient-descent
+fits away from its inputs.
+
+The gate also failed once, correctly, and the reason is worth recording because it is the
+failure mode a future reader will hit. The first run set `OMP_NUM_THREADS=1`, and
+`logistic_regression` came back with **32,696 of 41,536 rows differing** — by 1e-13 to 5e-10,
+never more. Nothing was wrong with the model. Component 6's manifest records
+`blas_threads = "unset (library default)"`, and `modeling/train.py` says in as many words
+that "the lbfgs gradient is a BLAS reduction" whose result depends on float summation order.
+A different thread count is a different summation order. Re-running under the library default
+gave bit-identity on all 41,536 rows.
+
+Two things follow. The determinism claim Components 6–8 make is **exactly as narrow as they
+say it is**, and the narrowness is load-bearing rather than boilerplate. And a gate that
+compares with `==` is sensitive enough to detect a thread-count change — which is the
+strongest available evidence that it would detect an actual change to a model.
+
 ### The environment is pinned, and a version bump is a re-baseline
 
 Bit-identity is scoped to this feature table, this row order, this library set, one thread and CPU
@@ -105,6 +126,11 @@ scikit-learn 1.9.0, numpy 2.5.2, xgboost 3.4.1, lightgbm 4.7.0 and torch 2.13.0+
 
 **On a different library build the gate will fail, and that is the correct behaviour.** It is an
 explicit, documented re-baseline, never a reason to loosen the comparison to a tolerance.
+
+The thread count is part of that environment, as the failure above demonstrates.
+`sentinel calibrate` must therefore be run **without** an `OMP_NUM_THREADS` override, matching
+the `blas_threads = "unset (library default)"` the committed manifests record. The value in
+force is written into Component 9's manifest so the two can be compared rather than assumed.
 
 ## Alternatives rejected
 
