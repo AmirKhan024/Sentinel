@@ -328,8 +328,10 @@ def drift_figure(
         0.004,
         "Each point's ECE is measured on that fold's test window, with a calibrator fitted on "
         "that fold's calibration window only -- no calibrator is refitted per test quarter. "
-        "covid_shift is a different regime and is drawn as a reference line, never joined into "
-        "the quarterly series.",
+        "Where one method was frozen for every fold its series sits exactly beneath "
+        "'selected' and is not separately visible; that coincidence is the result, not a "
+        "missing line. covid_shift is a different regime and is drawn as a reference line, "
+        "never joined into the quarterly series.",
         ha="center",
         fontsize=7,
         color="0.35",
