@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPlanSummary, listPlanRows } from '../api/planReview'
 import { getManifest } from '../api/meta'
+import { listStagedRequests } from '../api/stagedRequests'
 import type { PlanRowOut } from '../api/types'
 import { useApiQuery } from '../hooks/useApiQuery'
 import {
@@ -39,6 +40,22 @@ export function SupervisorPlanReviewPage() {
     [refreshKey],
     true,
   )
+  // Read-only visibility into ADR 0049's staging store -- a supervisor clicking "Submit" should
+  // never see nothing happen. This never counts as applied; it only reports what's pending.
+  const pendingDecisionsQuery = useApiQuery(
+    (signal) => listStagedRequests({ kind: 'plan_decision' }, signal),
+    [refreshKey],
+    true,
+  )
+  const pendingApprovalsQuery = useApiQuery(
+    (signal) => listStagedRequests({ kind: 'plan_approval' }, signal),
+    [refreshKey],
+    true,
+  )
+  const pendingCount =
+    (pendingDecisionsQuery.status === 'success' ? pendingDecisionsQuery.data.length : 0) +
+    (pendingApprovalsQuery.status === 'success' ? pendingApprovalsQuery.data.length : 0)
+
   const rowsQuery = useApiQuery(
     (signal) => listPlanRows(undefined, { offset: 0, limit: FETCH_CAP, descending: false }, signal),
     [refreshKey],
@@ -103,6 +120,13 @@ export function SupervisorPlanReviewPage() {
               <span className="plan-summary-figure">{approvalStatusLabel(summaryQuery.data.approval_status)}</span>
             </div>
           </section>
+
+          {pendingCount > 0 && (
+            <p className="hint" role="status">
+              {pendingCount} change{pendingCount === 1 ? '' : 's'} staged and waiting for an
+              operator's next batch run -- not yet applied to this plan.
+            </p>
+          )}
 
           {selectionManifestQuery.status === 'success' &&
             selectionManifestQuery.data.ranked_candidate_count != null &&

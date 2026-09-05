@@ -38,6 +38,23 @@ import { DecisionHistory } from '../components/actions/DecisionHistory'
 
 const REQUIRED_SCOPE = ['policy_id', 'fold_set', 'fold_id', 'k_name'] as const
 
+/**
+ * This page's data (`GET /v1/establishments/{id}`) comes from Component 13's historical,
+ * fold-scoped recommendation table -- a genuinely smaller population than every real
+ * establishment Sentinel knows about. An establishment can be real, resolved (Component 2), and
+ * even part of *today's live plan* (Component 17-21) while never once appearing in any
+ * historical backtest fold, because a fold only includes establishments with a qualifying
+ * inspection during that fold's own historical test window. A "not found" here is therefore a
+ * structural property of which population this page reads, not a transient bug -- confirmed
+ * directly against real data: the same establishment can 404 here while resolving correctly at
+ * `/plan/establishments/:targetInspectionId` (see `EstablishmentPlanDetailPage.tsx`). Do not
+ * "fix" this by relaxing required scope -- verified that every scope field (including `k_name`)
+ * has the *same* considered population for a given fold; only `is_selected` varies by `k_name`.
+ */
+function isRowNotFoundError(error: { kind: string; error?: string }): boolean {
+  return error.kind === 'client' && (error.error === 'row_not_found' || error.error === 'artifact_not_found')
+}
+
 function JourneyStep({
   title,
   status,
@@ -157,7 +174,22 @@ export function EstablishmentDetailPage() {
 
       {!enabled && <LoadingState label="Preparing an inspection plan…" />}
       {enabled && !data && query.status === 'loading' && <LoadingState />}
-      {enabled && !data && query.status === 'error' && <ErrorState error={query.error} />}
+      {enabled && !data && query.status === 'error' && isRowNotFoundError(query.error) && (
+        <div className="state state-error" role="alert">
+          <p>
+            This establishment doesn't have a recommendation for the selected historical
+            period — it may not have had a qualifying inspection during that period's window.
+          </p>
+          <p className="hint">
+            Try a different historical period above, or{' '}
+            <Link to="/geographic-plan">look it up in today's live field plan</Link> or{' '}
+            <Link to="/plan-review">plan review</Link> instead.
+          </p>
+        </div>
+      )}
+      {enabled && !data && query.status === 'error' && !isRowNotFoundError(query.error) && (
+        <ErrorState error={query.error} />
+      )}
 
       {enabled && data && (
         <ol className="journey">

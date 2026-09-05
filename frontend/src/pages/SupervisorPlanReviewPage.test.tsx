@@ -24,6 +24,24 @@ describe('SupervisorPlanReviewPage', () => {
     expect(screen.getByText('Work Area 1')).toBeInTheDocument()
   })
 
+  it('shows a visible count when changes are staged and waiting for an operator, so a submit never looks like it did nothing', async () => {
+    server.use(
+      http.get(`${BASE}/v1/staged-requests`, ({ request }) => {
+        const kind = new URL(request.url).searchParams.get('kind')
+        if (kind === 'plan_decision') {
+          return HttpResponse.json([
+            { request_id: 'r1', kind: 'plan_decision', natural_id: 'DEC-1', status: 'pending', staged_at: '2026-09-05T00:00:00Z', payload: {} },
+          ])
+        }
+        return HttpResponse.json([])
+      }),
+    )
+    renderPage()
+    expect(
+      await screen.findByText(/1 change staged and waiting for an operator's next batch run/),
+    ).toBeInTheDocument()
+  })
+
   it('links the establishment name to the live-plan detail page', async () => {
     renderPage()
     const name = await screen.findByText('Eat A Pita')

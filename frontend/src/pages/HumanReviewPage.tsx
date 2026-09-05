@@ -8,6 +8,7 @@ import { useManifestOptions } from '../hooks/useManifestOptions'
 import { reviewStatusLabel } from '../lib/copy'
 import { PageShell } from '../components/layout/PageShell'
 import { InspectionPlanSelector } from '../components/scope/InspectionPlanSelector'
+import { BacktestBanner } from '../components/common/BacktestBanner'
 import { LoadingState } from '../components/common/LoadingState'
 import { ErrorState } from '../components/common/ErrorState'
 import { EmptyState } from '../components/common/EmptyState'
@@ -81,8 +82,8 @@ export function HumanReviewPage() {
 
   return (
     <PageShell
-      title="Needs Attention"
-      description="Cases worth a human look before you treat the recommendation or schedule as final."
+      title="Backtest: Decision Review"
+      description="Cases worth a human look before you treat the recommendation or schedule as final, for a historical backtest run."
     >
       <InspectionPlanSelector
         scope={scope}
@@ -90,6 +91,8 @@ export function HumanReviewPage() {
         requiredFields={[...REQUIRED_SCOPE]}
         manifests={manifests}
       />
+
+      <BacktestBanner foldId={scope.fold_id} />
 
       {!enabled && <LoadingState label="Preparing an inspection plan…" />}
       {enabled && loading && <LoadingState />}

@@ -17,6 +17,12 @@ function renderAt(path: string) {
 }
 
 describe('HumanReviewPage', () => {
+  it('labels this page as a historical simulation, and its title no longer collides with the live "Needs attention" concept', async () => {
+    renderAt(FULL_SCOPE)
+    expect(await screen.findByText('Backtest: Decision Review')).toBeInTheDocument()
+    expect(screen.getByText(/Historical simulation/)).toBeInTheDocument()
+  })
+
   it('shows the establishment by name, not just its raw id', async () => {
     renderAt(FULL_SCOPE)
     expect(await screen.findByText('Eat A Pita')).toBeInTheDocument()

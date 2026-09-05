@@ -1,0 +1,379 @@
+{
+  "artifacts": [
+    {
+      "bytes": 19332,
+      "path": "geographic_inspection_plan_2026-09-04_20260905T123712Z.parquet",
+      "row_count": 30,
+      "schema": {
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "geographic_algorithm": "String",
+        "geographic_group_id": "String",
+        "geographic_group_label": "String",
+        "geographic_organization_definition_version": "String",
+        "highest_sentinel_rank_in_block": "Int64",
+        "is_selected": "Boolean",
+        "location_status": "String",
+        "n_prior_records": "Int64",
+        "operational_selection_definition_version": "String",
+        "organization_mode": "String",
+        "planning_date": "String",
+        "policy_id": "String",
+        "policy_rank": "Int64",
+        "rank": "Int64",
+        "requested_capacity": "Int64",
+        "secondary_no_history": "Boolean",
+        "selection_mechanism": "String",
+        "selection_reason": "String",
+        "suggested_order_in_block": "Int64",
+        "target_inspection_id": "String",
+        "threshold_km": "Float64",
+        "work_block_id": "String",
+        "work_block_label": "String"
+      },
+      "sha256": "be27c24f14cb88724f5bb49ce1065970e5ac509814bc33397ccec581f53ad83f"
+    }
+  ],
+  "built_at": "2026-09-05T12:37:12.188768+00:00",
+  "checks": [
+    {
+      "detail": "Component 19's and Component 20's selected-id sets are identical",
+      "name": "selected_ids_unchanged_by_geography",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "calibrated_score, base_score, rank, policy_rank, selection_reason, selection_mechanism are byte-identical to Component 19's output",
+      "name": "risk_and_policy_fields_unchanged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "as_of_latitude/as_of_longitude are byte-identical to Component 19's output",
+      "name": "coordinates_are_never_fabricated_or_altered",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 establishment(s) appear more than once in the geographic plan",
+      "name": "no_duplicate_group_membership",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "available=29, unavailable=1",
+      "name": "location_coverage_counts_match_the_plan",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "1 location-unavailable establishment(s) are all present in the unmapped group",
+      "name": "unmapped_establishments_preserved_not_dropped",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "group numbering runs northernmost (highest centroid latitude) first",
+      "name": "group_ids_ordered_by_centroid_latitude",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every work block's suggested order is a 1..N permutation of its members",
+      "name": "suggested_order_is_permutation_of_block",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "risk_first suggested order matches policy_rank ascending in every block",
+      "name": "risk_first_never_reorders",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "geographic_organization",
+  "composite_model_name": "xgboost_platt",
+  "geographic_algorithm": "distance_threshold_connected_components",
+  "geographic_group_count": 4,
+  "geographic_organization_definition_version": "v2",
+  "group_metrics": [
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.99840430798829,
+      "centroid_lon": -87.78901421649417,
+      "group_id": "area_1",
+      "group_label": "Area 1",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002169313"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.93848470457911,
+      "centroid_lon": -87.80661664953259,
+      "group_id": "area_2",
+      "group_label": "Area 2",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002088421"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 9.75755058423231,
+      "centroid_lat": 41.879192055549076,
+      "centroid_lon": -87.67838862507666,
+      "group_id": "area_3",
+      "group_label": "Area 3",
+      "max_within_group_distance_km": 28.366149608577015,
+      "member_establishment_ids": [
+        "EST-00001981521",
+        "EST-00002049478",
+        "EST-00002050892",
+        "EST-00002065073",
+        "EST-00002088377",
+        "EST-00002102601",
+        "EST-00002102880",
+        "EST-00002129487",
+        "EST-00002129800",
+        "EST-00002135962",
+        "EST-00002136074",
+        "EST-00002144415",
+        "EST-00002144881",
+        "EST-00002145017",
+        "EST-00002145768",
+        "EST-00002145770",
+        "EST-00002150803",
+        "EST-00002151097",
+        "EST-00002159538",
+        "EST-00002169526",
+        "EST-00002170153",
+        "EST-00002176718",
+        "EST-00002279336",
+        "EST-00002301200",
+        "EST-00002356195"
+      ],
+      "size": 25
+    },
+    {
+      "avg_within_group_distance_km": 4.879260647739504,
+      "centroid_lat": 41.78112448299157,
+      "centroid_lon": -87.58209118239108,
+      "group_id": "area_4",
+      "group_label": "Area 4",
+      "max_within_group_distance_km": 4.879260647739504,
+      "member_establishment_ids": [
+        "EST-00002167129",
+        "EST-00002484799"
+      ],
+      "size": 2
+    },
+    {
+      "avg_within_group_distance_km": null,
+      "centroid_lat": null,
+      "centroid_lon": null,
+      "group_id": "unmapped",
+      "group_label": "Unmapped / Location unavailable",
+      "max_within_group_distance_km": null,
+      "member_establishment_ids": [
+        "EST-00002181506"
+      ],
+      "size": 1
+    }
+  ],
+  "location_available_count": 29,
+  "location_coverage_pct": 96.7,
+  "location_unavailable_count": 1,
+  "notes": [
+    "Suggested order preserves Sentinel's priority ordering exactly (policy_rank ascending). Geography is used only to group and label establishments, never to reorder them."
+  ],
+  "operational_selection_definition_version": "v1",
+  "organization_mode": "risk_first",
+  "planning_date": "2026-09-04",
+  "selected_count": 30,
+  "selection_artifact_path": "operational_selection_2026-09-04_cap30_20260904T135522Z.parquet",
+  "selection_artifact_sha256": "4c2e220d5d28801725f153ff87dfc99fe491b8e2e045336964eb71c3158d36e4",
+  "threshold_km": 5.0,
+  "threshold_preset": "broad",
+  "warnings": [
+    "1 of 30 selected establishment(s) have no usable coordinates and are preserved in the 'unmapped' group rather than fabricated a location"
+  ],
+  "work_blocks": [
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_1",
+      "centroid_lat": 41.99840430798829,
+      "centroid_lon": -87.78901421649417,
+      "establishment_ids": [
+        "EST-00002169313"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 19,
+      "label": "Area 1",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        19
+      ],
+      "rank_range": [
+        19,
+        19
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_2",
+      "centroid_lat": 41.93848470457911,
+      "centroid_lon": -87.80661664953259,
+      "establishment_ids": [
+        "EST-00002088421"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 5,
+      "label": "Area 2",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        5
+      ],
+      "rank_range": [
+        5,
+        5
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 9.75755058423231,
+      "block_id": "area_3",
+      "centroid_lat": 41.879192055549076,
+      "centroid_lon": -87.67838862507666,
+      "establishment_ids": [
+        "EST-00001981521",
+        "EST-00002049478",
+        "EST-00002050892",
+        "EST-00002065073",
+        "EST-00002088377",
+        "EST-00002102601",
+        "EST-00002102880",
+        "EST-00002129487",
+        "EST-00002129800",
+        "EST-00002135962",
+        "EST-00002136074",
+        "EST-00002144415",
+        "EST-00002144881",
+        "EST-00002145017",
+        "EST-00002145768",
+        "EST-00002145770",
+        "EST-00002150803",
+        "EST-00002151097",
+        "EST-00002159538",
+        "EST-00002169526",
+        "EST-00002170153",
+        "EST-00002176718",
+        "EST-00002279336",
+        "EST-00002301200",
+        "EST-00002356195"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 1,
+      "label": "Area 3",
+      "max_within_block_distance_km": 28.366149608577015,
+      "member_ranks": [
+        1,
+        2,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        20,
+        21,
+        22,
+        23,
+        24,
+        27,
+        28,
+        29,
+        30
+      ],
+      "rank_range": [
+        1,
+        30
+      ],
+      "rationale": "These 25 selected establishment(s) are within the configured geographic proximity threshold and can be considered as one field-work area. Proximity is based on straight-line geographic distance; Sentinel does not currently estimate driving time or traffic.",
+      "size": 25
+    },
+    {
+      "avg_within_block_distance_km": 4.879260647739504,
+      "block_id": "area_4",
+      "centroid_lat": 41.78112448299157,
+      "centroid_lon": -87.58209118239108,
+      "establishment_ids": [
+        "EST-00002167129",
+        "EST-00002484799"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 3,
+      "label": "Area 4",
+      "max_within_block_distance_km": 4.879260647739504,
+      "member_ranks": [
+        3,
+        25
+      ],
+      "rank_range": [
+        3,
+        25
+      ],
+      "rationale": "These 2 selected establishment(s) are within the configured geographic proximity threshold and can be considered as one field-work area. Proximity is based on straight-line geographic distance; Sentinel does not currently estimate driving time or traffic.",
+      "size": 2
+    },
+    {
+      "avg_within_block_distance_km": null,
+      "block_id": "unmapped",
+      "centroid_lat": null,
+      "centroid_lon": null,
+      "establishment_ids": [
+        "EST-00002181506"
+      ],
+      "has_unmapped_member": true,
+      "highest_sentinel_rank": 26,
+      "label": "Unmapped / Location unavailable",
+      "max_within_block_distance_km": null,
+      "member_ranks": [
+        26
+      ],
+      "rank_range": [
+        26,
+        26
+      ],
+      "rationale": "Coordinates are unavailable for this establishment, so Sentinel cannot place it into a geographic work block.",
+      "size": 1
+    }
+  ]
+}

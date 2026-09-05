@@ -71,6 +71,22 @@ describe('TodayPage', () => {
     expect(screen.getByText(/No plan has been built yet for 4 Sept 2026/)).toBeInTheDocument()
   })
 
+  it('never calls the undecided-count card "Needs attention" -- that name means something else on the backtest Decision Review tab', async () => {
+    renderPage()
+    await screen.findByText('Eat A Pita')
+    expect(screen.getByText('Awaiting your decision')).toBeInTheDocument()
+    expect(screen.queryByText('Needs attention')).not.toBeInTheDocument()
+  })
+
+  it('shows the score and a concrete history-factor sentence next to each row, not just a generic reason', async () => {
+    renderPage()
+    await screen.findByText('Eat A Pita')
+    expect(screen.getByText(/55 \/ 100/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/6 of its last 7 canvass inspections found a Priority or Priority Foundation violation/),
+    ).toBeInTheDocument()
+  })
+
   it('links to the field plan and plan review pages', async () => {
     renderPage()
     await screen.findByText('Eat A Pita')

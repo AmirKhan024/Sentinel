@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from sentinel.api.schemas.establishment import RiskHistoryFactorsOut
 from sentinel.plan_review.models import PlanApprovalRequest, PlanDecision
 
 
@@ -54,6 +55,13 @@ class PlanRowOut(BaseModel):
     supervisor_revised_planned_date: str | None = None
     supervisor_revised_work_block_id: str | None = None
     supervisor_revised_operational_priority: int | None = None
+
+    #: A curated slice of Component 17's own as-of feature row for this candidate -- the exact
+    #: same fields Component 4's `RiskHistoryFactorsOut` already surfaces for the historical
+    #: (Side-A) establishment detail page, reused verbatim, never recomputed. `None` only when
+    #: the operational candidate table has no row for this `target_inspection_id` (should not
+    #: happen for a row that made it into a plan, but never assumed).
+    history_factors: RiskHistoryFactorsOut | None = None
 
 
 class WorkBlockOut(BaseModel):

@@ -26,6 +26,7 @@ from sentinel.api.schemas.plan_review import (
 )
 from sentinel.api.services.artifacts import read_table, resolve_latest, run_info
 from sentinel.api.services.entity_service import join_establishment_identity
+from sentinel.api.services.establishment_service import _HISTORY_FACTOR_FIELDS
 from sentinel.api.services.pagination import PageParams, slice_frame
 from sentinel.api.services.staging_service import StagingService
 from sentinel.config import Settings
@@ -82,6 +83,33 @@ def get_plan_summary(settings: Settings, planning_date: str | None) -> PlanSumma
     )
 
 
+def _history_factors_lookup(settings: Settings) -> dict[str, dict[str, object]]:
+    """Component 17's own as-of feature row, reused verbatim -- see `PlanRowOut.history_factors`.
+
+    Reads, never computes: `compute_operational_features` calls Component 4's own
+    `historical.aggregate_sql`/`features_sql` unmodified, so this table carries the same
+    `_HISTORY_FACTOR_FIELDS` columns under the same names as `as_of_features`. Absence of the
+    artifact (not built yet) degrades to no history factors, never an error -- this is a
+    supplementary "why" panel, not a required field of the plan row.
+    """
+    try:
+        path = resolve_latest(
+            settings.operational_candidates_processed_dir, prefix="operational_candidates"
+        )
+    except ArtifactNotFound:
+        return {}
+    frame = read_table(path)
+    if "target_inspection_id" not in frame.columns:
+        return {}
+    present_fields = [f for f in _HISTORY_FACTOR_FIELDS if f in frame.columns]
+    frame = frame.select(["target_inspection_id", *present_fields])
+    lookup: dict[str, dict[str, object]] = {}
+    for row in frame.iter_rows(named=True):
+        tiid = row.pop("target_inspection_id")
+        lookup[str(tiid)] = row
+    return lookup
+
+
 def list_plan_rows(
     settings: Settings, planning_date: str | None, page: PageParams
 ) -> Page[PlanRowOut]:
@@ -90,6 +118,9 @@ def list_plan_rows(
     frame = join_establishment_identity(frame, settings)
     frame = frame.sort(page.sort_column or "suggested_order_in_block", descending=page.descending)
     rows, total = slice_frame(frame, page)
+    history_factors = _history_factors_lookup(settings)
+    for row in rows:
+        row["history_factors"] = history_factors.get(str(row["target_inspection_id"]))
     return Page(
         data=[PlanRowOut.model_validate(row) for row in rows],
         page=PageMeta(offset=page.offset, limit=page.limit, total=total),
@@ -106,7 +137,9 @@ def get_plan_row(
     if frame.height == 0:
         raise RowNotFound(f"No plan row for target_inspection_id={target_inspection_id!r}.")
     frame = join_establishment_identity(frame, settings)
-    return PlanRowOut.model_validate(dict(frame.row(0, named=True)))
+    row = dict(frame.row(0, named=True))
+    row["history_factors"] = _history_factors_lookup(settings).get(str(target_inspection_id))
+    return PlanRowOut.model_validate(row)
 
 
 def list_work_blocks(settings: Settings, planning_date: str | None) -> list[WorkBlockOut]:

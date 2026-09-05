@@ -8,13 +8,15 @@ const OPERATIONAL_LINKS = [
   { to: '/plan-review', label: 'Plan Review' },
 ]
 
-/** Historical/backtest analysis surfaces -- fold-and-policy-scoped, not a live plan. */
+/** Historical/backtest analysis surfaces -- fold-and-policy-scoped, not a live plan. Every
+ * label here says "Backtest" explicitly, not just the group's position in the nav bar, so a
+ * reader can never mistake one of these for a live-plan number one tab-click away. */
 const ANALYSIS_LINKS = [
   { to: '/plan', label: 'Backtest Summary' },
-  { to: '/recommendations', label: 'Priority List' },
-  { to: '/schedule', label: 'Full Schedule' },
-  { to: '/backlog', label: 'Waiting' },
-  { to: '/review', label: 'Needs Attention' },
+  { to: '/recommendations', label: 'Backtest: Priority List' },
+  { to: '/schedule', label: 'Backtest: Schedule' },
+  { to: '/backlog', label: 'Backtest: Waiting' },
+  { to: '/review', label: 'Backtest: Decision Review' },
 ]
 
 function NavLinks({ links }: { links: { to: string; label: string; end?: boolean }[] }) {

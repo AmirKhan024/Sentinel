@@ -9,10 +9,11 @@ import { useApiQuery } from '../hooks/useApiQuery'
 import { useDecisionScope } from '../hooks/useDecisionScope'
 import { useDefaultScope } from '../hooks/useDefaultScope'
 import { useManifestOptions } from '../hooks/useManifestOptions'
-import { capacityHonestyNote } from '../lib/copy'
+import { capacityHonestyNote, foldLabel } from '../lib/copy'
 import { PageShell } from '../components/layout/PageShell'
 import { WorkflowDiagram } from '../components/layout/WorkflowDiagram'
 import { InspectionPlanSelector } from '../components/scope/InspectionPlanSelector'
+import { BacktestBanner } from '../components/common/BacktestBanner'
 import { SummaryCard } from '../components/common/SummaryCard'
 import { LoadingState } from '../components/common/LoadingState'
 import { ErrorState } from '../components/common/ErrorState'
@@ -137,11 +138,17 @@ export function OverviewPage() {
         manifests={manifests}
       />
 
+      <BacktestBanner foldId={scope.fold_id} />
+
       {!enabled && <LoadingState label="Preparing an inspection plan…" />}
 
       {enabled && (
         <section>
           <h2>This plan, at a glance</h2>
+          <p className="hint">
+            {foldLabel(scope.fold_id)}, {scope.k_name} capacity -- a historical backtest run, not
+            today's live plan.
+          </p>
           <div className="summary-grid">
             <SummaryCard
               label="Establishments considered"
@@ -151,7 +158,7 @@ export function OverviewPage() {
             <SummaryCard
               label="Selected for this plan"
               value={count(recommendedQuery)}
-              hint="Ranked within this plan's capacity cutoff -- not a claim these establishments are unsafe"
+              hint="Ranked within this plan's capacity cutoff"
               to={`/recommendations?${new URLSearchParams(scope as Record<string, string>).toString()}`}
             />
             <SummaryCard
@@ -184,11 +191,15 @@ export function OverviewPage() {
             <SummaryCard
               label="Missing outcomes"
               value={count(missingOutcomesQuery)}
-              hint="Planned inspections nobody has logged the outcome of yet -- not a sign anything went wrong"
+              hint="Planned inspections nobody has logged the outcome of yet"
               to={`/review?${new URLSearchParams(scope as Record<string, string>).toString()}`}
               variant="attention"
             />
           </div>
+          <p className="hint">
+            Selection reflects a capacity cutoff, not a safety verdict; a missing outcome is a
+            record-keeping gap, not a sign anything went wrong.
+          </p>
           {[consideredQuery, recommendedQuery, decisionReviewQuery, missingOutcomesQuery].some(
             (q) => q.status === 'error',
           ) && (

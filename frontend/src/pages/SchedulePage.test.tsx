@@ -15,6 +15,11 @@ function renderAt(path: string) {
 }
 
 describe('SchedulePage', () => {
+  it('labels this page as a historical simulation, not the current plan', async () => {
+    renderAt(FULL_SCOPE)
+    expect(await screen.findByText(/Historical simulation/)).toBeInTheDocument()
+  })
+
   it('links to the one-day-at-a-time historical view', async () => {
     renderAt(FULL_SCOPE)
     const link = await screen.findByText(/View one day at a time/)

@@ -10,6 +10,32 @@ import { EstablishmentDetailPage } from './EstablishmentDetailPage'
 const BASE = 'http://127.0.0.1:8000'
 const FULL_SCOPE = 'policy_id=pure_risk&fold_set=quarterly&fold_id=quarterly-2026Q1&k_name=k_1_day'
 
+describe('EstablishmentDetailPage — 404', () => {
+  it('explains a missing historical recommendation honestly instead of a raw error code, and offers the live plan as an alternative', async () => {
+    server.use(
+      http.get(`${BASE}/v1/establishments/:id`, () =>
+        HttpResponse.json(
+          { error: 'row_not_found', detail: 'No recommendation for establishment_id=E-1 under the given scope.' },
+          { status: 404 },
+        ),
+      ),
+    )
+    render(
+      <MemoryRouter initialEntries={[`/establishments/E-1?${FULL_SCOPE}`]}>
+        <Routes>
+          <Route path="/establishments/:establishmentId" element={<EstablishmentDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(
+      await screen.findByText(/doesn't have a recommendation for the selected historical period/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/look it up in today's live field plan/)).toBeInTheDocument()
+    // Never the raw technical error code in the primary message.
+    expect(screen.queryByText(/row_not_found/)).not.toBeInTheDocument()
+  })
+})
+
 function renderAt(query: string) {
   return render(
     <MemoryRouter initialEntries={[`/establishments/E-1?${query}`]}>

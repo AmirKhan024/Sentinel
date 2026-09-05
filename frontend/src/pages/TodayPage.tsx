@@ -6,6 +6,8 @@ import { currentOperationalDate } from '../lib/today'
 import {
   approvalStatusLabel,
   decisionReasonLabel,
+  formatPriorityScore,
+  historyFactorSummary,
   planLabelForToday,
   planStalenessNote,
 } from '../lib/copy'
@@ -75,12 +77,12 @@ export function TodayPage() {
               to="/geographic-plan"
             />
             <SummaryCard
-              label="Needs attention"
+              label="Awaiting your decision"
               value={Math.max(
                 0,
                 summaryQuery.data.selected_inspection_workload - summaryQuery.data.decisions_recorded,
               )}
-              hint="Establishments still awaiting a supervisor decision"
+              hint="Establishments in this plan with no supervisor decision recorded yet"
               to="/plan-review"
               variant="attention"
             />
@@ -106,7 +108,14 @@ export function TodayPage() {
                       establishmentId={row.establishment_id}
                     />
                   </span>
-                  <span className="today-row-why">{decisionReasonLabel(row.selection_reason)}</span>
+                  <span className="today-row-why">
+                    {decisionReasonLabel(row.selection_reason)}
+                    {' — '}
+                    {formatPriorityScore(row.calibrated_score)}
+                    {row.history_factors && historyFactorSummary(row.history_factors)[0] && (
+                      <> · {historyFactorSummary(row.history_factors)[0]}</>
+                    )}
+                  </span>
                 </li>
               ))}
             </ol>

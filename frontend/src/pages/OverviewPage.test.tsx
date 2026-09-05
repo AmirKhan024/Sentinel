@@ -12,6 +12,26 @@ function renderPage() {
 }
 
 describe('OverviewPage', () => {
+  it('labels this page as a historical simulation, not the current plan', async () => {
+    renderPage()
+    expect(await screen.findByText(/Historical simulation/)).toBeInTheDocument()
+    expect(screen.getByText(/Not a current plan/)).toBeInTheDocument()
+  })
+
+  it('labels which run the summary numbers belong to', async () => {
+    renderPage()
+    await screen.findByText('Selected for this plan', {}, { timeout: 3000 })
+    expect(screen.getByText(/a historical backtest run, not/)).toBeInTheDocument()
+  })
+
+  it('states the safety/record-keeping caveats once, not per card', async () => {
+    renderPage()
+    await screen.findByText('Selected for this plan', {}, { timeout: 3000 })
+    expect(
+      screen.getByText(/Selection reflects a capacity cutoff, not a safety verdict/),
+    ).toBeInTheDocument()
+  })
+
   it('leads with the plain-language product story', async () => {
     renderPage()
     expect(

@@ -15,6 +15,11 @@ function renderAt(path: string) {
 }
 
 describe('ScheduleDayPage', () => {
+  it('labels this page as a historical simulation, not the current plan', async () => {
+    renderAt(FULL_SCOPE)
+    expect(await screen.findByText(/Historical simulation/)).toBeInTheDocument()
+  })
+
   it('shows a loading state while scope is still being filled in automatically', async () => {
     renderAt('')
     expect(await screen.findByText(/Preparing an inspection plan/)).toBeInTheDocument()

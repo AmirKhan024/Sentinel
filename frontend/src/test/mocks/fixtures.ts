@@ -249,6 +249,7 @@ export const planRowFixture: PlanRowOut = {
   supervisor_revised_planned_date: null,
   supervisor_revised_work_block_id: null,
   supervisor_revised_operational_priority: null,
+  history_factors: historyFactorsFixture,
 }
 
 export const workBlockFixture: WorkBlockOut = {

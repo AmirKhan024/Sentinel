@@ -652,6 +652,22 @@ def seed_plan_review(settings: Settings, rows: list[dict[str, object]]) -> Path:
     return path
 
 
+def seed_operational_candidates(settings: Settings, rows: list[dict[str, object]]) -> Path:
+    """Writes an ``operational_candidates`` table directly -- Component 17's as-of feature
+    row for the live plan, reusing Component 4's own columns verbatim. No dedicated writer
+    module exists for this table (unlike the other ``seed_*`` helpers' ``finalize(rows, table)``
+    pattern), so this mirrors ``seed_plan_review``'s raw-frame approach instead."""
+    directory = settings.operational_candidates_processed_dir
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"operational_candidates_{TS}.parquet"
+    pl.DataFrame(rows).write_parquet(path)
+    manifest_path = path.with_name(f"manifest_{path.stem}.json")
+    manifest_path.write_text(
+        json.dumps({"built_at": "2026-01-01T00:00:00+00:00"}), encoding="utf-8"
+    )
+    return path
+
+
 def seed_approved_plan(
     settings: Settings, *, planning_date: str = "2026-08-28", **manifest_overrides: object
 ) -> Path:

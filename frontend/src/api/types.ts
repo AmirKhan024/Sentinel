@@ -479,6 +479,10 @@ export interface PlanRowOut {
   supervisor_revised_planned_date: string | null
   supervisor_revised_work_block_id: string | null
   supervisor_revised_operational_priority: number | null
+
+  /** Component 17's own as-of feature row for this candidate, reused verbatim -- `null` only
+   * when the operational candidate table has no row for this `target_inspection_id`. */
+  history_factors: RiskHistoryFactorsOut | null
 }
 
 export interface WorkBlockOut {

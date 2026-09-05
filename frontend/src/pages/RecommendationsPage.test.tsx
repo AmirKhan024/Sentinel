@@ -18,6 +18,11 @@ function renderAt(path: string) {
 }
 
 describe('RecommendationsPage', () => {
+  it('labels this page as a historical simulation, not the current plan', async () => {
+    renderAt(FULL_SCOPE)
+    expect(await screen.findByText(/Historical simulation/)).toBeInTheDocument()
+  })
+
   it('shows a loading state, then automatically fills in a working inspection plan', async () => {
     renderAt('')
     expect(await screen.findByText(/Preparing an inspection plan/)).toBeInTheDocument()

@@ -15,6 +15,11 @@ function renderAt(path: string) {
 }
 
 describe('BacklogPage', () => {
+  it('labels this page as a historical simulation, not the current plan', async () => {
+    renderAt(FULL_SCOPE)
+    expect(await screen.findByText(/Historical simulation/)).toBeInTheDocument()
+  })
+
   it('renders the waiting establishment in plain language', async () => {
     renderAt(FULL_SCOPE)
     expect(await screen.findByText('E-2')).toBeInTheDocument()

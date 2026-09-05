@@ -9,6 +9,7 @@ import { useManifestOptions } from '../hooks/useManifestOptions'
 import { backlogReasonLabel, formatDate } from '../lib/copy'
 import { PageShell } from '../components/layout/PageShell'
 import { InspectionPlanSelector } from '../components/scope/InspectionPlanSelector'
+import { BacktestBanner } from '../components/common/BacktestBanner'
 import { LoadingState } from '../components/common/LoadingState'
 import { ErrorState } from '../components/common/ErrorState'
 import { EmptyState } from '../components/common/EmptyState'
@@ -82,6 +83,8 @@ export function BacklogPage() {
         manifests={manifests}
         showAdvanced
       />
+
+      <BacktestBanner foldId={scope.fold_id} />
 
       {!enabled && <LoadingState label="Preparing an inspection plan…" />}
 

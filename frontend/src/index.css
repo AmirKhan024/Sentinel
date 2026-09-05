@@ -798,6 +798,16 @@ button.link-button:hover:not(:disabled) {
   margin: 1rem 0;
 }
 
+.backtest-banner {
+  background: var(--attention-bg);
+  border: 1px solid var(--attention-border);
+  color: var(--attention-text);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 1.05rem;
+  margin: 0.75rem 0 1rem;
+  font-size: 0.95rem;
+}
+
 .explainer-box h3,
 .explainer-box h2,
 .explainer-box h4 {

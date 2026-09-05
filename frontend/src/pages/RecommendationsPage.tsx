@@ -15,6 +15,7 @@ import {
 } from '../lib/copy'
 import { PageShell } from '../components/layout/PageShell'
 import { InspectionPlanSelector } from '../components/scope/InspectionPlanSelector'
+import { BacktestBanner } from '../components/common/BacktestBanner'
 import { LoadingState } from '../components/common/LoadingState'
 import { ErrorState } from '../components/common/ErrorState'
 import { EmptyState } from '../components/common/EmptyState'
@@ -135,6 +136,8 @@ export function RecommendationsPage() {
         requiredFields={[...REQUIRED_SCOPE]}
         manifests={manifests}
       />
+
+      <BacktestBanner foldId={scope.fold_id} />
 
       <TechnicalDetails summary="How Sentinel prioritizes locations">
         <p>{HOW_TO_USE_PRIORITY}</p>

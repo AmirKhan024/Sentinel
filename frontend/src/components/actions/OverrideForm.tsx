@@ -113,9 +113,10 @@ export function OverrideForm({
         />
       </label>
       <label>
-        Your name or id (required -- Sentinel has no login, so this is what the record will show)
+        Your name or id (required)
         <input type="text" value={actor} onChange={(e) => setActor(e.target.value)} required />
       </label>
+      <p className="hint">This is what the audit record will show for this decision.</p>
       {status === 'error' && error && <ErrorState error={error} />}
       <div className="action-form-buttons">
         <button type="submit" disabled={status === 'submitting'}>
