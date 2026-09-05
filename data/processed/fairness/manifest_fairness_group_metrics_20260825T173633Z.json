@@ -1,0 +1,485 @@
+{
+  "advisories": [
+    "group_calibration_spread_is_modest: 60 of 60 cell(s) exceed an ECE spread of 0.05. Evidence for Component 13, not an implementation error.",
+    "selection_rates_are_proportionate: 2040 of 8050 supported (group, k) cell(s) sit outside [0.50, 2.00]x the overall selection rate",
+    "capture_is_even_across_groups: 20 of 300 cell(s) exceed a capture spread of 0.2",
+    "representation: group 37 share travelled 0.1069 (0.0461 to 0.1530) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 60618 share travelled 0.0715 (0.0104 to 0.0819) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 60647 share travelled 0.0614 (0.0147 to 0.0761) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 25 share travelled 0.0580 (0.0224 to 0.0804) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 75 share travelled 0.0559 (0.0047 to 0.0606) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 60666 share travelled 0.0557 (0.0021 to 0.0578) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 23 share travelled 0.0537 (0.0104 to 0.0641) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 60611 share travelled 0.0528 (0.0117 to 0.0645) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 38 share travelled 0.0511 (0.0314 to 0.0824) across 17 fold(s) -- a metric moving for this group has two candidate explanations",
+    "representation: group 60632 share travelled 0.0509 (0.0119 to 0.0629) across 17 fold(s) -- a metric moving for this group has two candidate explanations"
+  ],
+  "artifacts": [
+    {
+      "bytes": 74284,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_attribution_profiles_20260825T173633Z.parquet",
+      "row_count": 4200,
+      "schema": {
+        "fairness_definition_version": "String",
+        "feature_name": "String",
+        "fold_set": "String",
+        "group_definition": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "is_exact": "Boolean",
+        "mean_abs_shap": "Float64",
+        "mean_shap": "Float64",
+        "model_name": "String",
+        "n_rows": "Int64",
+        "overall_rank": "Int64",
+        "profile_spearman": "Float64",
+        "rank": "Int64",
+        "rank_delta": "Int64"
+      },
+      "sha256": "8b39e5fda21b9cbe8bb435ff31077e2da84ef325734edfee8b1f79beeeca37a9"
+    },
+    {
+      "bytes": 22477,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_bootstrap_20260825T173633Z.parquet",
+      "row_count": 820,
+      "schema": {
+        "fairness_definition_version": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "group_value": "String",
+        "k_name": "String",
+        "level": "Float64",
+        "lower": "Float64",
+        "metric": "String",
+        "model_name": "String",
+        "n_rows": "Int64",
+        "point_estimate": "Float64",
+        "replications": "Int64",
+        "scheme": "String",
+        "seed": "Int64",
+        "stage": "String",
+        "upper": "Float64"
+      },
+      "sha256": "f8fffededc7136a383712551181e3c65a3aa39231fc0cfbaa23ed88a14ec29fa"
+    },
+    {
+      "bytes": 61660,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_disparity_20260825T173633Z.parquet",
+      "row_count": 23600,
+      "schema": {
+        "fairness_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "k_name": "String",
+        "max_group": "String",
+        "max_group_rows": "Int64",
+        "max_value": "Float64",
+        "measure": "String",
+        "metric": "String",
+        "min_group": "String",
+        "min_group_rows": "Int64",
+        "min_value": "Float64",
+        "model_name": "String",
+        "n_groups_supported": "Int64",
+        "n_groups_unsupported": "Int64",
+        "reference_value": "Float64",
+        "stage": "String",
+        "undefined_reason": "String",
+        "value": "Float64"
+      },
+      "sha256": "020af7cc4b26032797edd63c4a2b6fdb3fe4a80aa78c14565b1597605b5c469d"
+    },
+    {
+      "bytes": 46605,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_drift_20260825T173633Z.parquet",
+      "row_count": 5480,
+      "schema": {
+        "fairness_definition_version": "String",
+        "first_fold_id": "String",
+        "first_spread": "Float64",
+        "fold_set": "String",
+        "folds_measured": "Int64",
+        "folds_total": "Int64",
+        "group_definition": "String",
+        "k_name": "String",
+        "last_fold_id": "String",
+        "last_spread": "Float64",
+        "max_spread": "Float64",
+        "mean_spread": "Float64",
+        "measure": "String",
+        "metric": "String",
+        "min_spread": "Float64",
+        "model_name": "String",
+        "relative_change": "Float64",
+        "sd_spread": "Float64",
+        "stage": "String",
+        "trend": "String"
+      },
+      "sha256": "346ef5f5f6454c191466bde52baca908d2fc83ab2c8535bbcac83d1a333736aa"
+    },
+    {
+      "bytes": 65691,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_group_calibration_20260825T173633Z.parquet",
+      "row_count": 9450,
+      "schema": {
+        "base_value": "Float64",
+        "calibrated_value": "Float64",
+        "delta": "Float64",
+        "fairness_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "improved": "Boolean",
+        "metric": "String",
+        "model_name": "String",
+        "n_positive": "Int64",
+        "n_rows": "Int64"
+      },
+      "sha256": "677b0e91e97a2d7e513a106e689f2380a6f191178758ab1e6731dbe2457ad60d"
+    },
+    {
+      "bytes": 7395,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_group_definitions_20260825T173633Z.parquet",
+      "row_count": 7,
+      "schema": {
+        "audited_rows": "Int64",
+        "distinct_values": "Int64",
+        "fairness_definition_version": "String",
+        "group_definition": "String",
+        "is_model_feature": "Boolean",
+        "provenance": "String",
+        "rationale": "String",
+        "refusal_reason": "String",
+        "source_column": "String",
+        "status": "String",
+        "unknown_rows": "Int64"
+      },
+      "sha256": "3b6d7907bb1a9bbd6cdf14b58f769b33c1e4ddb987059d8ec818fa341b2fec30"
+    },
+    {
+      "bytes": 142669,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_group_metrics_20260825T173633Z.parquet",
+      "row_count": 122850,
+      "schema": {
+        "fairness_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "insufficient_reason": "String",
+        "k": "Int64",
+        "k_name": "String",
+        "metric": "String",
+        "metric_kind": "String",
+        "model_name": "String",
+        "n_negative": "Int64",
+        "n_positive": "Int64",
+        "n_rows": "Int64",
+        "stage": "String",
+        "value": "Float64"
+      },
+      "sha256": "19317e974107bb1097944bc8036a47db1ed306e12f35b8fe4c71dbdea3109fc4"
+    },
+    {
+      "bytes": 20765,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_group_missingness_20260825T173633Z.parquet",
+      "row_count": 1144,
+      "schema": {
+        "deviation": "Float64",
+        "fairness_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "indicator": "String",
+        "k_name": "String",
+        "missing_rate": "Float64",
+        "missing_rate_in_top_k": "Float64",
+        "n_missing": "Int64",
+        "n_rows": "Int64",
+        "overall_missing_rate": "Float64",
+        "source_column": "String"
+      },
+      "sha256": "901645e92065115b0931774dce83379b682ee84a82c674270f03390c3befaafd"
+    },
+    {
+      "bytes": 41448,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_group_support_20260825T173633Z.parquet",
+      "row_count": 2737,
+      "schema": {
+        "base_rate": "Float64",
+        "calibration_status": "String",
+        "fairness_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "group_value": "String",
+        "insufficient_reason": "String",
+        "n_negative": "Int64",
+        "n_positive": "Int64",
+        "n_rows": "Int64",
+        "ranking_status": "String",
+        "representation_share": "Float64"
+      },
+      "sha256": "c5a8e0d945e20df5455495e1106c45f9e56e5a3dad54124bb24d5f4190ebe5f5"
+    },
+    {
+      "bytes": 705184,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_priority_audit_20260825T173633Z.parquet",
+      "row_count": 136850,
+      "schema": {
+        "capture_rate": "Float64",
+        "fairness_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "group_definition": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "insufficient_reason": "String",
+        "k": "Int64",
+        "k_name": "String",
+        "model_name": "String",
+        "n_positive": "Int64",
+        "n_rows": "Int64",
+        "n_selected": "Int64",
+        "overall_capture_rate": "Float64",
+        "population_share": "Float64",
+        "positives_selected": "Int64",
+        "precision_in_selected": "Float64",
+        "selected_share": "Float64",
+        "selection_rate": "Float64",
+        "selection_rate_ratio": "Float64",
+        "stage": "String"
+      },
+      "sha256": "78202e3ece71ec7309f0b5ebef9600f42d43793f45eefeea7ff819406c7805fe"
+    }
+  ],
+  "audited_group_definitions": [
+    "community_area",
+    "zip"
+  ],
+  "blocked": [
+    "protected-class fairness metrics -- no race, income, ACS, census or deprivation variable is ingested anywhere in this project (ADR 0023). Adding one is a Component 1 extension with its own provenance and boundary-vintage questions, and this component does not license a proxy in the meantime",
+    "inspector-effect decomposition -- the dataset publishes 22 columns and none identifies a person (ADR 0019), so a group difference in citation rate cannot be split into establishment risk versus differential inspection practice",
+    "ward and census-tract group definitions -- refused with measurements, see the registry above and ADR 0033",
+    "neighbourhood names for community-area region ids -- no boundary file is ingested, and guessing the mapping would attribute a measured disparity to the wrong neighbourhood",
+    "group-specific recalibration -- would change Component 9, which is closed, and is a substantive fairness decision disguised as a fix (ADR 0034)",
+    "any debiasing, reweighting, threshold adjustment or prediction modification -- this component is an audit and modifies nothing",
+    "model selection on fairness grounds -- Component 12 produces evidence; a policy component settles MEMORY open question 13"
+  ],
+  "bootstrap_metrics": [
+    "ece",
+    "capture_rate"
+  ],
+  "bootstrap_replications": 1000,
+  "bootstrap_seed": 20260826,
+  "built_at": "2026-08-25T17:36:33.981418+00:00",
+  "calibrated_predictions_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\predictions\\calibrated_predictions_20260824T163608Z.parquet",
+  "calibrated_predictions_sha256": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+  "calibration_bins": 15,
+  "calibration_min_rows": 300,
+  "categoricals_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\neural\\neural_categoricals_20260818T125631Z.parquet",
+  "categoricals_sha256": "4a3dc38659f4c42b5c32ac6840079aa0229c4e8b30fc97cfc100bf1963bf445c",
+  "checks": [
+    {
+      "detail": "207680 audited (model, id) pairs against 207680 committed; 0 fabricated, 0 dropped",
+      "name": "every_audited_row_has_a_prediction",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 audited group value(s) absent from the declared source column",
+      "name": "every_group_value_comes_from_the_source",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "57326 row(s) carry a source inspection; minimum lag 1 day(s); 0 dated on or after their row",
+      "name": "group_mapping_predates_every_row",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 ambiguous or duplicated group mapping(s)",
+      "name": "group_mapping_is_unambiguous",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) whose declared fold does not match the re-derived split",
+      "name": "every_row_is_in_its_declared_fold",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "207680 rows compared; 0 calibrated and 0 base mismatches; 207680 rows where the two stages genuinely differ",
+      "name": "stages_are_not_confused",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 observed group(s) missing from the support table",
+      "name": "no_group_disappeared",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) without support counts; 0 unsupported row(s) carrying a value",
+      "name": "every_metric_carries_support",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "2737 support row(s) re-derived against floors 200/20/20 rows and 300 for calibration; 0 disagreed",
+      "name": "support_decisions_are_reproducible",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 forbidden column(s) in the artifact",
+      "name": "no_outcome_or_feature_column_leaked",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 table(s) unsorted or carrying a duplicate key",
+      "name": "tables_are_deterministically_sorted",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "4 input artifact(s) re-checksummed; 0 changed",
+      "name": "inputs_were_not_modified",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 row group(s) naming a fold set outside ['covid_shift', 'quarterly']",
+      "name": "covid_was_not_pooled",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "60 of 60 cell(s) exceed an ECE spread of 0.05. Evidence for Component 13, not an implementation error.",
+      "name": "group_calibration_spread_is_modest",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "2040 of 8050 supported (group, k) cell(s) sit outside [0.50, 2.00]x the overall selection rate",
+      "name": "selection_rates_are_proportionate",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "20 of 300 cell(s) exceed a capture spread of 0.2",
+      "name": "capture_is_even_across_groups",
+      "passed": false,
+      "severity": "warn"
+    }
+  ],
+  "ci_level": 0.95,
+  "code_version": "0.1.0",
+  "component": "fairness",
+  "disparity_reference": "pooled population value over the same rows, never a nominated group",
+  "does_not_establish": [
+    "causality -- every number is observational; nothing is randomised and no counterfactual is constructed",
+    "discrimination -- no model here has a geographic input at all, and a measured difference arises through correlated features rather than through a group attribute",
+    "absence of bias -- equal measured performance on supported groups is not evidence of fairness, and 27 of 78 community areas fall below the support floor",
+    "legal or regulatory compliance -- no protected characteristic is observed anywhere in this project, and a correlate is not the attribute",
+    "ethical acceptability -- whether a measured difference is acceptable is a policy judgement this component is not delegated",
+    "equal treatment -- the target is that a violation was CITED, not that an establishment was unsafe, and ADR 0019 records that the two cannot be separated on this data",
+    "an optimal fairness policy -- no intervention is implemented, tested or recommended, and the standard criteria are mutually incompatible when base rates differ"
+  ],
+  "experimental_models": [
+    "xgboost_chain_embeddings_platt"
+  ],
+  "explanations_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\explanations\\explanation_values_20260825T145444Z.parquet",
+  "explanations_sha256": "316ee3873f52734427cb69c5a118f7cf77ba43b688d440f2d35b74b0116ba2c0",
+  "fairness_definition_version": "v1",
+  "feature_definition_version": "v1",
+  "features_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\features\\as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "fold_sets": [
+    "covid_shift",
+    "quarterly"
+  ],
+  "group_provenance": {
+    "community_area": "Component 8 as-of layer, carried from raw ':@computed_region_vrxf_vc4k'. A Socrata computed region -- the platform joins the row's coordinates against a boundary layer and returns that layer's row index -- so it is a stable identifier but NOT necessarily the city's official community-area number. No boundary file is ingested by this project, so no neighbourhood name is printed anywhere: an off-by-one in a boundary index would attribute a measured disparity to the wrong neighbourhood in the one document whose purpose is to be trusted about which neighbourhood.",
+    "zip": "Component 8 as-of layer, carried from the raw 'zip' column's leading five digits. Recorded on the inspection record rather than spatially derived, which is why its coverage is better than community area's."
+  },
+  "group_source_is_a_model_feature": {
+    "community_area": false,
+    "zip": false
+  },
+  "groups_insufficient": 154,
+  "groups_observed": 286,
+  "groups_supported": 132,
+  "inherited_limitations": [
+    "ADR 0019 -- the dataset publishes 22 columns and none identifies an inspector, so a group difference in citation rate cannot be decomposed into establishment risk versus differential inspection practice. Chicago assigns inspectors by district, which makes geography close to the strongest available proxy for who inspected.",
+    "ADR 0008 -- the target is that a Priority violation was CITED, not that an establishment was unsafe.",
+    "ADR 0012 -- this is a re-ordering study over inspections that actually happened. No establishment nobody inspected has a label, so nothing here speaks to coverage.",
+    "ADR 0023 -- community area and ZIP correlate strongly with race and income by construction, and a correlate is not the attribute. No protected characteristic is observed anywhere in this project."
+  ],
+  "input_sha256_after": {
+    "calibrated_predictions": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+    "categoricals": "4a3dc38659f4c42b5c32ac6840079aa0229c4e8b30fc97cfc100bf1963bf445c",
+    "explanations": "316ee3873f52734427cb69c5a118f7cf77ba43b688d440f2d35b74b0116ba2c0",
+    "features": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f"
+  },
+  "inputs_unchanged": true,
+  "k_levels": [
+    "k_pct_01",
+    "k_pct_05",
+    "k_pct_10",
+    "k_1_day",
+    "k_1_week"
+  ],
+  "models": [
+    "lightgbm_platt",
+    "logistic_regression_platt",
+    "neural_numeric_only_platt",
+    "xgboost_chain_embeddings_platt",
+    "xgboost_platt"
+  ],
+  "refused_group_definitions": {
+    "census_tract": "797 groups over 32,696 quarterly test rows is roughly 41 rows each before any fold split. No group would clear the 200-row floor, so the table would be a table of nulls -- which reports nothing while looking thorough.",
+    "facility_type": "Out of scope rather than unusable: this component audits geographic equity, and facility type is not geography. It is also free text whose synonyms are deliberately not merged (ADR 0022), so 'GROCERY' and 'GROCERY STORE' are distinct groups. A later component wanting an operational dimension has this entry to turn on.",
+    "municipality": "Degenerate. 312,957 of 314,245 rows say CHICAGO, and the 95 distinct values include 'Chicago', 'chicago' and 'CCHICAGO'. A group definition whose cardinality comes from typing errors is not a group definition.",
+    "point_geography": "ADR 0023 already rejected continuous geography for Component 8 and the reason transfers exactly: it is not less of a proxy for a protected characteristic, only less legible -- and a less legible proxy is worse for an audit, not better.",
+    "ward": "Not temporally stable. The two published ward layers assign different region ids to 56,451 of 57,403 rows (98.3%). A ward identifier is a property of a boundary version, not of a place, so attaching the current ward to a 2019 row assigns it to a district that did not exist when it was inspected. That the publisher ships two vintages at all is the evidence. ADR 0019 separately refused ward as an inspector proxy."
+  },
+  "row_counts": {
+    "fairness_attribution_profiles": 4200,
+    "fairness_bootstrap": 820,
+    "fairness_disparity": 23600,
+    "fairness_drift": 5480,
+    "fairness_group_calibration": 9450,
+    "fairness_group_definitions": 7,
+    "fairness_group_metrics": 122850,
+    "fairness_group_missingness": 1144,
+    "fairness_group_support": 2737,
+    "fairness_priority_audit": 136850
+  },
+  "seconds": 162.200389,
+  "stages": [
+    "base",
+    "calibrated"
+  ],
+  "support_min_negative": 20,
+  "support_min_positive": 20,
+  "support_min_rows": 200,
+  "threshold_policy": "descriptive threshold audit: error rates are reported only at capacity-derived and percentage top-k cutoffs, never at a probability threshold. Not a deployment policy."
+}

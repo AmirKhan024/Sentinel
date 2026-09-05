@@ -1,0 +1,186 @@
+{
+  "abstention_policy_inherited": "this component inherits ADR 0040 unchanged: Sentinel never abstains, and flagging a case for review is not an abstention. Every flagged row already carries a rank and a recommendation from Component 13; review annotates it and can route it to a human decision, but the recommendation itself is never withheld, blanked or replaced with a 'no decision' placeholder while review is pending",
+  "advisories": [
+    "cases_flagged_by_trigger: 70791 case(s) flagged this run"
+  ],
+  "artifacts": [
+    {
+      "bytes": 257911,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\review\\human_review_queue_20260827T152426Z.parquet",
+      "row_count": 70791,
+      "schema": {
+        "decision_mechanism": "String",
+        "decision_reason": "String",
+        "establishment_id": "String",
+        "final_policy_rank": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k_name": "String",
+        "model_name": "String",
+        "planning_run_id": "String",
+        "policy_id": "String",
+        "replan_index": "Int64",
+        "resolution_action": "String",
+        "review_definition_version": "String",
+        "review_id": "String",
+        "review_status": "String",
+        "schedule_config_id": "String",
+        "scheduled_date": "Date",
+        "target_inspection_id": "String",
+        "trigger_reasons": "String",
+        "warnings": "String"
+      },
+      "sha256": "16b737082f6ab0317b36678e63576d40832843a81525362cef12ed3bbc630d94"
+    },
+    {
+      "bytes": 2773,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\review\\review_advisories_20260827T152426Z.parquet",
+      "row_count": 1,
+      "schema": {
+        "code": "String",
+        "detail": "String",
+        "n_cases": "Int64",
+        "review_definition_version": "String",
+        "scope": "String",
+        "severity": "String"
+      },
+      "sha256": "ceb2f7cc19783b21f02c4db9294901b32e7c97aefd24c8348141b1ef9eb0a1be"
+    },
+    {
+      "bytes": 1736,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\review\\review_resolution_log_20260827T152426Z.parquet",
+      "row_count": 0,
+      "schema": {
+        "actor": "String",
+        "decided_at": "String",
+        "escalation_note": "String",
+        "final_status": "String",
+        "fold_id": "String",
+        "k_name": "String",
+        "original_status": "String",
+        "outcome": "String",
+        "policy_id": "String",
+        "reason_code": "String",
+        "referenced_adjustment_id": "String",
+        "referenced_override_id": "String",
+        "resolution_action": "String",
+        "review_definition_version": "String",
+        "review_id": "String",
+        "target_inspection_id": "String"
+      },
+      "sha256": "03c1cad378f6bddb5ccb6f4b9b8117eb7ff737c995397186f409c91f09bc5197"
+    }
+  ],
+  "blocked": [
+    "introducing a probability, score or confidence threshold of any kind (ADR 0040, ADR 0051)",
+    "re-ranking, re-selecting or re-scoring any row (ADR 0037, ADR 0042)",
+    "creating an override or adjustment record directly. A REFER_TO_OVERRIDE or REFER_TO_ADJUSTMENT resolution records a pointer only; the override or adjustment itself is a separate submission through its own contract (ADR 0047)",
+    "reusing 'defer' or 'deferred' as a status or verb token. Component 14's ScheduleStatus.DEFERRED means something structurally different and the two must never be confusable (ADR 0051)"
+  ],
+  "built_at": "2026-08-27T15:24:26.257405+00:00",
+  "cases_flagged": 70791,
+  "cases_resolved": 0,
+  "checks": [
+    {
+      "detail": "0 queue row(s) carry no trigger reason",
+      "name": "every_case_carries_a_trigger",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 warning-triggered row(s) were not selected or carried no warning",
+      "name": "warning_trigger_rows_are_selected_and_warned",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "the queue is byte-identical to a fresh rebuild from the two triggers",
+      "name": "queue_is_deterministically_rebuildable",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no resolutions were applied",
+      "name": "no_duplicate_review_id",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no resolutions were applied",
+      "name": "pointer_fields_are_mutually_exclusive",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 queue row(s) disagree with the applied resolution log",
+      "name": "review_status_reflects_one_applied_resolution",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no resolutions were applied",
+      "name": "resolution_verbs_do_not_collide",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 input artifact(s) changed during the run",
+      "name": "inputs_were_not_modified",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no resolutions were applied",
+      "name": "pointer_targets_exist",
+      "passed": true,
+      "severity": "warn"
+    },
+    {
+      "detail": "70791 case(s) flagged this run",
+      "name": "cases_flagged_by_trigger",
+      "passed": false,
+      "severity": "warn"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "human_review",
+  "deferral_is_not_scheduling_deferral": "a Component 16 review case and a Component 14 ScheduleStatus.DEFERRED row are unrelated facts about the same establishment. The schedule status means a scheduled inspection was moved to a later operating day. A review case means a human should look at the row before it continues to be treated as automatically sufficient. Neither implies the other, and no Component 16 vocabulary value contains the word 'defer'",
+  "determinism_scope": "the review-queue computation is deterministic: identical Component 13/14 inputs produce a byte-identical queue, and shuffling the input rows changes nothing. Resolutions are external human decisions, so a run is byte-identical only given the identical resolutions file, and the manifest pins that file by checksum rather than claiming a human decision is reproducible computation",
+  "does_not_establish": [
+    "that a flagged case is wrong, risky, or should be overridden. A warning or an execution gap is a fact about what is known, not a verdict",
+    "that an unflagged case needed no review. The trigger set is deliberately narrow -- two boolean facts -- and a real department may have review criteria this component does not represent",
+    "that a referenced override_id or adjustment_id is valid, applied, or even yet submitted. The pointer records a human's stated intent; the validator checks it only as an advisory",
+    "any claim about how quickly a flagged case should be resolved. There is no SLA, no clock and no queue-age threshold anywhere in this component"
+  ],
+  "execution_log_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\execution_log_20260826T131416Z.parquet",
+  "execution_log_sha256": "301c56f53de340cfad4dbbf9d32a79a9cdb2dfa43ce231d62622d4d130e21760",
+  "four_human_layers": "a recommendation override is Component 13's and changes who is in the approved queue; a scheduling adjustment is Component 14's and changes when an approved row is worked; an execution event is Component 14's and records what a person reports actually happened; a review resolution is Component 16's and records that a human looked at a flagged case and what they decided to do about it. A review resolution never creates an override or an adjustment itself -- it records a pointer to one, submitted separately through its own contract",
+  "inherited_limitations": [
+    "Component 13: a policy warning is a fact about what is known, not an estimate of risk; this component inherits that boundary and does not sharpen it into a score",
+    "Component 14: an execution gap is external, unverified field reporting; a case flagged for a missing execution record says nothing about whether the inspection happened"
+  ],
+  "input_sha256_after": {
+    "execution_log": "301c56f53de340cfad4dbbf9d32a79a9cdb2dfa43ce231d62622d4d130e21760",
+    "recommendations": "c796822d12dd6a97cfbcf40950271784cecdb89fe340d7e752d453cc886b478c",
+    "schedule": "81413ecd01164ef21a45e9cd452c817d3b30d7cde42f442d0f4ed5a303dd5fe3"
+  },
+  "inputs_unchanged": true,
+  "no_threshold": "no numeric score, probability or confidence threshold exists anywhere in this component and there is no flag to add one. Both triggers are boolean facts already written by Component 13 (warnings != none on a selected row) or derivable by an exact-match anti-join against Component 14's own execution log (no matching execution_id). Neither reads score, base_score or final_policy_rank to decide queue membership",
+  "policy_definition_version": "v1",
+  "recommendations_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\inspection_recommendations_20260826T075812Z.parquet",
+  "recommendations_sha256": "c796822d12dd6a97cfbcf40950271784cecdb89fe340d7e752d453cc886b478c",
+  "resolutions_applied": 0,
+  "resolutions_path": null,
+  "resolutions_sha256": null,
+  "review_cannot": "a review resolution changes only the review case's own status. It never edits a score, a rank, a decision mechanism, a decision reason, a schedule status, a policy override log or a scheduling adjustment log. Referring a case to override or adjustment records the human's stated intent as a pointer; it never creates the override or adjustment record itself -- that remains a separate submission through Component 13's or Component 14's own contract",
+  "review_definition_version": "v1",
+  "row_counts": {
+    "human_review_queue": 70791,
+    "review_advisories": 1,
+    "review_resolution_log": 0
+  },
+  "schedule_definition_version": "v1",
+  "schedule_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\inspection_schedule_20260826T131416Z.parquet",
+  "schedule_sha256": "81413ecd01164ef21a45e9cd452c817d3b30d7cde42f442d0f4ed5a303dd5fe3",
+  "seconds": 34.2451
+}

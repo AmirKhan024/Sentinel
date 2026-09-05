@@ -1,0 +1,729 @@
+{
+  "adjustment_cannot": "a scheduling adjustment changes when an approved row is worked, and nothing else. It never edits a score, a rank, a decision mechanism, a decision reason or the deterministic plan, all of which are written unchanged beside the adjustment log so the original assignment stays recoverable. It never moves a row outside the horizon, because that would be a capacity increase by another name, and it never displaces a coverage-reserve row, because that would quietly convert an adjustment into a coverage cut",
+  "adjustments_applied": 0,
+  "adjustments_path": null,
+  "adjustments_sha256": null,
+  "advisories": [
+    "capacity_is_fully_utilized: 679 cell(s) left 11067 slot(s) idle. The calendar was more generous than the cutoff, which is the mirror image of a backlog and a different problem",
+    "every_recommendation_was_scheduled: 308 cell(s) could not fit 5488 approved inspection(s) inside their own horizon. Reported rather than hidden, and never corrected by extending the horizon",
+    "the_coverage_reserve_survived_scheduling: on the observed calendar, 1012 of 3459 coverage-reserve slot(s) (0.293) were lost to the horizon across 136 of 273 reserve-bearing cell(s); 91 lost the reserve entirely. The flat_median scenario lost 0, which is zero by construction and is why the two are not pooled. A measured consequence of the reserve sitting at the tail of Component 13's rank order, reported rather than corrected",
+    "the_scenario_is_not_observed_fact: 70791 row(s) come from the flat_median scenario, which assigns every day the window's median rate. At k_1_day and k_1_week it holds exactly k slots and reports zero backlog by construction; those numbers describe the assumption, not a day",
+    "an_execution_record_was_supplied: 0 execution event(s) were supplied. With none, every execution and completion number in this run is a typed zero rather than a measurement, and no row in this repository describes anything that happened in Chicago",
+    "the_horizon_opens_on_a_full_day: 20 of 180 horizon(s) open on a day holding less than 50% of the window's median rate. Every one-day capacity number in those cells is dominated by an unrepresentative day",
+    "an_establishment_recurs_within_a_horizon: 70 establishment(s) hold more than one scheduled canvass inside a single horizon. A data fact about repeat canvasses, not a scheduling defect"
+  ],
+  "allocation_claim": "deterministic greedy slot allocation down an approved rank order. Not optimal, not optimised, and no objective function is defined or solved anywhere in this component",
+  "artifacts": [
+    {
+      "bytes": 844405,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\inspection_schedule_20260826T131416Z.parquet",
+      "row_count": 141582,
+      "schema": {
+        "adjustment_id": "String",
+        "base_score": "Float64",
+        "coverage_eligible": "Boolean",
+        "day_index": "Int64",
+        "decision_mechanism": "String",
+        "decision_reason": "String",
+        "establishment_id": "String",
+        "final_policy_rank": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "inversion_reason": "String",
+        "is_scenario": "Boolean",
+        "k": "Int64",
+        "k_name": "String",
+        "model_name": "String",
+        "model_rank": "Int64",
+        "original_schedule_rank": "Int64",
+        "original_scheduled_date": "Date",
+        "planning_run_id": "String",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "recommendation_date": "Date",
+        "recommendation_override_id": "String",
+        "replan_index": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "schedule_rank": "Int64",
+        "schedule_reason": "String",
+        "schedule_status": "String",
+        "scheduled_date": "Date",
+        "score": "Float64",
+        "slot_index": "Int64",
+        "target_inspection_id": "String",
+        "wait_operating_days": "Int64",
+        "warnings": "String"
+      },
+      "sha256": "81413ecd01164ef21a45e9cd452c817d3b30d7cde42f442d0f4ed5a303dd5fe3"
+    },
+    {
+      "bytes": 34847,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\schedule_backlog_20260826T131416Z.parquet",
+      "row_count": 5488,
+      "schema": {
+        "backlog_position": "Int64",
+        "backlog_reason": "String",
+        "coverage_eligible": "Boolean",
+        "decision_mechanism": "String",
+        "decision_reason": "String",
+        "establishment_id": "String",
+        "final_policy_rank": "Int64",
+        "first_available_date": "Date",
+        "fold_id": "String",
+        "fold_set": "String",
+        "horizon_slots": "Int64",
+        "is_scenario": "Boolean",
+        "k": "Int64",
+        "k_name": "String",
+        "model_name": "String",
+        "planning_run_id": "String",
+        "policy_id": "String",
+        "replan_index": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "slots_short": "Int64",
+        "target_inspection_id": "String",
+        "would_fit_on_day_index": "Int64"
+      },
+      "sha256": "db5f1790af4969379203c305b63811683190bfb029f9a331629dc622fa7f5726"
+    },
+    {
+      "bytes": 8904,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\schedule_slots_20260826T131416Z.parquet",
+      "row_count": 712,
+      "schema": {
+        "capacity_source": "String",
+        "cumulative_slots": "Int64",
+        "day_index": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "horizon_days": "Int64",
+        "horizon_was_clamped": "Boolean",
+        "is_scenario": "Boolean",
+        "k": "Int64",
+        "k_name": "String",
+        "median_daily_capacity": "Int64",
+        "n_slots": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "slot_date": "Date"
+      },
+      "sha256": "5bddb8e7d2cbf6532ba582293edae61a96e6eb29ce472cf61689d4b41ec2b0f9"
+    },
+    {
+      "bytes": 24340,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\schedule_summary_20260826T131416Z.parquet",
+      "row_count": 1260,
+      "schema": {
+        "capacity_utilization": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "horizon_days": "Int64",
+        "horizon_end_date": "Date",
+        "horizon_slots": "Int64",
+        "horizon_start_date": "Date",
+        "horizon_was_clamped": "Boolean",
+        "idle_slots": "Int64",
+        "is_scenario": "Boolean",
+        "k": "Int64",
+        "k_name": "String",
+        "median_daily_capacity": "Int64",
+        "model_name": "String",
+        "n_adjustments_applied": "Int64",
+        "n_backlog": "Int64",
+        "n_cancelled": "Int64",
+        "n_deferred": "Int64",
+        "n_execution_events": "Int64",
+        "n_recommended": "Int64",
+        "n_scheduled": "Int64",
+        "planning_run_id": "String",
+        "policy_id": "String",
+        "replan_index": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String"
+      },
+      "sha256": "59a7e863cd3a546145f1525daa5b93d69485053210592bbe2e966c9c6be73f72"
+    },
+    {
+      "bytes": 13103,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\capacity_utilization_20260826T131416Z.parquet",
+      "row_count": 4984,
+      "schema": {
+        "capacity_source": "String",
+        "day_index": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "idle_slots": "Int64",
+        "is_scenario": "Boolean",
+        "k_name": "String",
+        "model_name": "String",
+        "n_reserve_scheduled": "Int64",
+        "n_risk_scheduled": "Int64",
+        "n_scheduled": "Int64",
+        "n_slots": "Int64",
+        "policy_id": "String",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "slot_date": "Date",
+        "utilization": "Float64"
+      },
+      "sha256": "a09f60b8e3e0261759327dc333271fbf3bba82d317ef634ba1c367e7b6fb6102"
+    },
+    {
+      "bytes": 24934,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\priority_preservation_20260826T131416Z.parquet",
+      "row_count": 1260,
+      "schema": {
+        "best_backlogged_policy_rank": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_scenario": "Boolean",
+        "k": "Int64",
+        "k_name": "String",
+        "max_inversion_depth": "Int64",
+        "max_wait_operating_days": "Int64",
+        "mean_wait_operating_days": "Float64",
+        "median_wait_operating_days": "Float64",
+        "model_name": "String",
+        "n_adjusted": "Int64",
+        "n_displaced_by_adjustment": "Int64",
+        "n_execution_cancelled": "Int64",
+        "n_execution_completed": "Int64",
+        "n_execution_not_performed": "Int64",
+        "n_inversions": "Int64",
+        "n_no_execution_record": "Int64",
+        "n_reserve_recommended": "Int64",
+        "n_reserve_scheduled": "Int64",
+        "n_risk_recommended": "Int64",
+        "n_risk_scheduled": "Int64",
+        "n_rows_with_inversion_reason": "Int64",
+        "n_scheduled": "Int64",
+        "policy_id": "String",
+        "queue_coverage": "Float64",
+        "rank_spearman": "Float64",
+        "reserve_share_delta": "Float64",
+        "reserve_share_recommended": "Float64",
+        "reserve_share_scheduled": "Float64",
+        "reserve_slots_lost": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "strict_priority_preserved": "Boolean",
+        "worst_scheduled_policy_rank": "Int64"
+      },
+      "sha256": "610b00d26ac07dd13504afc973e63ea3c2455ca259ca651d08b6ca89c11299dc"
+    },
+    {
+      "bytes": 6170,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\schedule_configurations_20260826T131416Z.parquet",
+      "row_count": 2,
+      "schema": {
+        "capacity_mode": "String",
+        "capacity_rule": "String",
+        "horizon_rule": "String",
+        "is_default": "Boolean",
+        "is_scenario": "Boolean",
+        "preserves_priority_exactly": "Boolean",
+        "rationale": "String",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "strategy_id": "String"
+      },
+      "sha256": "2982f70b42981ce0e490f943603a94bc050e9aab6991aef920b1371c42bc62d2"
+    },
+    {
+      "bytes": 2420,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\schedule_adjustment_log_20260826T131416Z.parquet",
+      "row_count": 0,
+      "schema": {
+        "action": "String",
+        "actor": "String",
+        "adjustment_id": "String",
+        "decided_at": "String",
+        "displaced_landed_status": "String",
+        "displaced_target_inspection_id": "String",
+        "final_scheduled_date": "Date",
+        "final_status": "String",
+        "fold_id": "String",
+        "k_name": "String",
+        "original_schedule_rank": "Int64",
+        "original_scheduled_date": "Date",
+        "original_status": "String",
+        "outcome": "String",
+        "planning_run_id": "String",
+        "policy_id": "String",
+        "reason_code": "String",
+        "replan_index": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "target_date": "String",
+        "target_inspection_id": "String"
+      },
+      "sha256": "74413aef2ce2283329a49abbc958a366ec4595df1248d564699cfcb7e538af38"
+    },
+    {
+      "bytes": 3865,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\execution_contract_20260826T131416Z.parquet",
+      "row_count": 22,
+      "schema": {
+        "allowed_values": "String",
+        "contract_name": "String",
+        "dtype": "String",
+        "field_name": "String",
+        "meaning": "String",
+        "required": "Boolean",
+        "schedule_definition_version": "String"
+      },
+      "sha256": "9b3fb5abeebb87582af6d4e1b95a7a86bdef6893aa5942f7678bdf3fea36fb2b"
+    },
+    {
+      "bytes": 1766,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\execution_log_20260826T131416Z.parquet",
+      "row_count": 0,
+      "schema": {
+        "actor": "String",
+        "applied_at_replan_index": "Int64",
+        "execution_id": "String",
+        "execution_status": "String",
+        "fold_id": "String",
+        "k_name": "String",
+        "observed_at": "String",
+        "outcome": "String",
+        "plan_scheduled_date": "Date",
+        "policy_id": "String",
+        "reason_code": "String",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "scheduled_date": "Date",
+        "target_inspection_id": "String",
+        "triggers_replan": "Boolean"
+      },
+      "sha256": "301c56f53de340cfad4dbbf9d32a79a9cdb2dfa43ce231d62622d4d130e21760"
+    },
+    {
+      "bytes": 8329,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\execution_summary_20260826T131416Z.parquet",
+      "row_count": 1260,
+      "schema": {
+        "completion_rate": "Float64",
+        "execution_log_sha256": "String",
+        "final_replan_index": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k_name": "String",
+        "model_name": "String",
+        "n_cancelled_in_field": "Int64",
+        "n_completed": "Int64",
+        "n_no_execution_record": "Int64",
+        "n_not_performed": "Int64",
+        "n_scheduled": "Int64",
+        "policy_id": "String",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String"
+      },
+      "sha256": "6bb37789823f4e19d11e1e69f3ed9c99ad3c025600ef3f6ab14074672483c71e"
+    },
+    {
+      "bytes": 18711,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\replanning_runs_20260826T131416Z.parquet",
+      "row_count": 1260,
+      "schema": {
+        "execution_log_sha256": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k_name": "String",
+        "n_cancelled": "Int64",
+        "n_newly_scheduled": "Int64",
+        "n_preserved_completed": "Int64",
+        "n_preserved_past": "Int64",
+        "n_returned_to_queue": "Int64",
+        "n_still_backlog": "Int64",
+        "parent_replan_index": "Int64",
+        "planning_run_id": "String",
+        "policy_id": "String",
+        "remaining_slots": "Int64",
+        "replan_from_date": "Date",
+        "replan_index": "Int64",
+        "schedule_config_id": "String",
+        "schedule_definition_version": "String",
+        "trigger": "String"
+      },
+      "sha256": "83c0ef12fd4cec8fd01fb01df64b7c6ae81d9130dbf605346631d83cd4852b59"
+    },
+    {
+      "bytes": 3852,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\scheduling\\schedule_advisories_20260826T131416Z.parquet",
+      "row_count": 7,
+      "schema": {
+        "code": "String",
+        "detail": "String",
+        "n_cells": "Int64",
+        "schedule_definition_version": "String",
+        "scope": "String",
+        "severity": "String"
+      },
+      "sha256": "274ea9c6a394d6cd4c0a297cbc60408fff216cd0cdc42c5e5351cde121eaec80"
+    }
+  ],
+  "backlog_rows": 5488,
+  "blocked": [
+    "re-ranking the queue by risk, geography, mechanism or anything else. Component 13 owns the ordering (HANDOFF 16g)",
+    "adjusting a score. No component after 9 writes one (ADR 0037)",
+    "raising capacity, extending a horizon or adding an operating day. Every cutoff descends from the window's own measured median daily rate",
+    "introducing a probability threshold. Refused by Component 12 in prose and by Component 13's CAPACITY_SEMANTICS; there is no flag to add one",
+    "treating the coverage reserve as slack. It is an allocation with a measured price, and a scheduler that raided it to fit a route would silently be changing the policy",
+    "geographic route optimisation, inspector assignment or travel-time estimation. The dataset has no inspector (ADR 0019) and routing is Component 15",
+    "joining anything in data/processed/scheduling/ onto a feature table. It holds the system's own past decisions one layer further out than Component 13 already refused to close",
+    "letting an execution outcome edit a recommendation, a rank or a plan that was already written"
+  ],
+  "built_at": "2026-08-26T13:14:16.967281+00:00",
+  "calendar_is_observed": "operating days are the distinct inspection_date values Component 13's universe carries for the fold, ascending. No working-week rule, no holiday calendar and no generated date appears anywhere in this component; a day is an operating day because Chicago inspected on it",
+  "capacity_is_inherited": "every capacity in this component descends from Component 5's measured median daily inspection rate by way of Component 13's k. There is no flag that raises a slot count, extends a horizon or adds a day, because a schedule that fitted more inspections than the city worked would beat every alternative for that reason alone",
+  "capacity_mode_scenario_claim": "flat_median is a labelled scenario, never an observed Chicago operational fact. It assigns every horizon day the window's median daily rate, which is what Component 13's capacity cutoffs already assume -- so at k_1_day and k_1_week it holds exactly k slots, reports a backlog of zero and a utilisation of exactly 1.000, and is describing its own arithmetic rather than any day that happened",
+  "capacity_modes": [
+    "observed_calendar",
+    "flat_median"
+  ],
+  "cells_losing_all_reserve": 91,
+  "cells_losing_reserve": 136,
+  "cells_with_backlog": 308,
+  "cells_with_idle": 679,
+  "checks": [
+    {
+      "detail": "0 table(s) unsorted or carrying a duplicate key",
+      "name": "tables_are_deterministically_sorted",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 scheduled row(s) are not in Component 13's approved queue",
+      "name": "schedule_rows_originate_in_the_recommendation_universe",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) plan a different number of rows than were approved",
+      "name": "every_selected_recommendation_is_accounted_for",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 slot(s) hold more than one inspection",
+      "name": "no_slot_is_double_booked",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 inspection(s) occupy more than one slot",
+      "name": "no_inspection_occupies_two_slots",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 day(s) over capacity, 0 utilisation(s) above 1.0",
+      "name": "no_day_exceeds_its_capacity",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 operating day(s) carry a slot count its mode does not produce",
+      "name": "capacity_matches_the_declared_mode",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 horizon defect(s)",
+      "name": "horizon_is_ordered_contiguous_and_real",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 rank defect(s)",
+      "name": "schedule_ranks_are_unique_and_contiguous",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) place a lower-priority row before a higher-priority one",
+      "name": "schedule_order_follows_policy_rank",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 silent inversion(s)",
+      "name": "no_inversion_without_a_reason_code",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 status or reason defect(s)",
+      "name": "every_row_declares_a_valid_status",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 backlogged row(s) absent from the table, 0 stray",
+      "name": "backlog_is_exactly_the_unscheduled_remainder",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) do not account for every approved row, 0 idle count(s) disagree with the horizon",
+      "name": "counts_add_up",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) schedule more than the approved queue",
+      "name": "capacity_never_exceeds_the_recommendation_k",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 provenance column(s) drifted from Component 13",
+      "name": "c13_provenance_is_preserved",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 outcome column(s) present in a scheduling artifact",
+      "name": "no_outcome_column_reaches_the_schedule",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no execution events were supplied",
+      "name": "completed_rows_are_never_rescheduled",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) carry different provenance across planning runs",
+      "name": "execution_never_alters_a_recommendation",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no re-planning run occurred",
+      "name": "no_execution_event_changes_an_earlier_schedule",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 planning-run lineage defect(s)",
+      "name": "planning_runs_are_unique_and_chained",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 confusion(s) between the two human layers",
+      "name": "adjustments_are_not_overrides",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no adjustments were supplied",
+      "name": "adjustments_preserve_the_original_assignment",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no adjustments supplied",
+      "name": "adjustments_never_displace_a_coverage_reserve_row",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 attribution gap(s)",
+      "name": "external_changes_are_fully_attributed",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no external file was supplied, so the written plan is the deterministic plan",
+      "name": "the_deterministic_plan_is_intact",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 configuration(s) differ from the frozen grid",
+      "name": "configurations_match_the_frozen_grid",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "679 cell(s) left 11067 slot(s) idle. The calendar was more generous than the cutoff, which is the mirror image of a backlog and a different problem",
+      "name": "capacity_is_fully_utilized",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "308 cell(s) could not fit 5488 approved inspection(s) inside their own horizon. Reported rather than hidden, and never corrected by extending the horizon",
+      "name": "every_recommendation_was_scheduled",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "on the observed calendar, 1012 of 3459 coverage-reserve slot(s) (0.293) were lost to the horizon across 136 of 273 reserve-bearing cell(s); 91 lost the reserve entirely. The flat_median scenario lost 0, which is zero by construction and is why the two are not pooled. A measured consequence of the reserve sitting at the tail of Component 13's rank order, reported rather than corrected",
+      "name": "the_coverage_reserve_survived_scheduling",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "70791 row(s) come from the flat_median scenario, which assigns every day the window's median rate. At k_1_day and k_1_week it holds exactly k slots and reports zero backlog by construction; those numbers describe the assumption, not a day",
+      "name": "the_scenario_is_not_observed_fact",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "0 execution event(s) were supplied. With none, every execution and completion number in this run is a typed zero rather than a measurement, and no row in this repository describes anything that happened in Chicago",
+      "name": "an_execution_record_was_supplied",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "20 of 180 horizon(s) open on a day holding less than 50% of the window's median rate. Every one-day capacity number in those cells is dominated by an unrepresentative day",
+      "name": "the_horizon_opens_on_a_full_day",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "70 establishment(s) hold more than one scheduled canvass inside a single horizon. A data fact about repeat canvasses, not a scheduling defect",
+      "name": "an_establishment_recurs_within_a_horizon",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "0 input artifact(s) changed during the run",
+      "name": "inputs_were_not_modified",
+      "passed": true,
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "operational_scheduling",
+  "config_grid": [
+    {
+      "capacity_mode": "observed_calendar",
+      "capacity_rule": "operating days are the distinct inspection_date values Component 13's universe carries for the fold, ascending. No working-week rule, no holiday calendar and no generated date appears anywhere in this component; a day is an operating day because Chicago inspected on it",
+      "horizon_rule": "horizon_days = ceil(k / test_median_daily_capacity), taken as a prefix of the fold's own observed operating days. The horizon is identical in both capacity modes; only the per-day slot count differs, so that a mode change moves capacity and never the calendar",
+      "is_default": true,
+      "is_scenario": false,
+      "preserves_priority_exactly": true,
+      "rationale": "the approved queue laid against the days Chicago actually worked, at the volumes it actually worked them. The only configuration with contact with a real calendar",
+      "schedule_config_id": "strict_priority__observed_calendar",
+      "schedule_definition_version": "v1",
+      "strategy_id": "strict_priority"
+    },
+    {
+      "capacity_mode": "flat_median",
+      "capacity_rule": "flat_median is a labelled scenario, never an observed Chicago operational fact. It assigns every horizon day the window's median daily rate, which is what Component 13's capacity cutoffs already assume -- so at k_1_day and k_1_week it holds exactly k slots, reports a backlog of zero and a utilisation of exactly 1.000, and is describing its own arithmetic rather than any day that happened",
+      "horizon_rule": "horizon_days = ceil(k / test_median_daily_capacity), taken as a prefix of the fold's own observed operating days. The horizon is identical in both capacity modes; only the per-day slot count differs, so that a mode change moves capacity and never the calendar",
+      "is_default": false,
+      "is_scenario": true,
+      "preserves_priority_exactly": true,
+      "rationale": "the same queue against Component 13's own capacity assumption. Retained because the assumption is worth being able to see: it is feasible by construction, and the 784 inspections it fits that the real calendar does not are the measurement",
+      "schedule_config_id": "strict_priority__flat_median",
+      "schedule_definition_version": "v1",
+      "strategy_id": "strict_priority"
+    }
+  ],
+  "default_capacity_mode": "observed_calendar",
+  "determinism_scope": "the scheduling computation is deterministic: identical inputs produce byte-identical tables, and shuffling the input rows changes nothing. Adjustments and execution events are external human and operational inputs, so a run is byte-identical only given the identical files, and the manifest pins them by checksum rather than claiming that what inspectors did last Tuesday is reproducible computation",
+  "does_not_establish": [
+    "that this is the correct schedule. It is the schedule one stated strategy produces from one approved queue under one measured calendar",
+    "that the schedule is optimal. It is deterministic greedy allocation down an approved rank order; no objective function is defined anywhere in this component and none is solved",
+    "that 784 inspections were missed, or that any establishment went uninspected. Every number here re-orders inspections that already happened, and a backlog is what a stated capacity rule would not have fitted",
+    "that the observed calendar is knowable in advance. It is measured from the window it schedules, so it states what capacity existed rather than what a planner could have known on day one. A live deployment would need a forecast this project has not built",
+    "that the lost coverage reserve is Component 13's error. It is what two individually correct layers do when composed, and whether the reserve belongs at the head of the queue is a policy question this component is not entitled to answer",
+    "that any establishment can be reached in the time the schedule allows. There is no travel time in this dataset, so a day's slots are a workload count and never a route",
+    "any claim about inspectors. The dataset names none, and nothing here infers one"
+  ],
+  "evaluation_definition_version": "v1",
+  "evaluation_folds_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\evaluation\\evaluation_folds_20260824T160045Z.parquet",
+  "evaluation_folds_sha256": "31dc7fac00c050165efa02fc005c73c7392fccaa1c3b5a2265afa3a037b442b7",
+  "execution_cannot": "an execution event records what happened and changes nothing about what was recommended or planned. It never edits a score, a rank, a mechanism, a reason, an original assignment or the plan at replan index 0. It may only affect assignments on operating days strictly after the day it was observed, which is the temporal boundary stated as an arithmetic rule rather than an intention",
+  "execution_events": 0,
+  "execution_path": null,
+  "execution_sha256": null,
+  "green_run_means": "a green run means the plan was built correctly. It does not mean the city has enough capacity, it does not mean the schedule is the right one, and it does not mean the coverage reserve survived",
+  "horizon_rule": "horizon_days = ceil(k / test_median_daily_capacity), taken as a prefix of the fold's own observed operating days. The horizon is identical in both capacity modes; only the per-day slot count differs, so that a mode change moves capacity and never the calendar",
+  "idle_slots": 11067,
+  "inherited_limitations": [
+    "Component 5: this is a re-ordering study over inspections that actually happened. A schedule here is a counterfactual arrangement of real historical inspections, not a forecast of future ones",
+    "Component 13: the queue is the queue one stated policy produces from one selected model under one capacity assumption, and no policy winner was declared",
+    "Component 13: the production model is an operating choice from a rule whose tie band decides the answer, and two defensible bands pick two different models",
+    "Component 3: the target is that a Priority violation was cited, not that an establishment was unsafe",
+    "Component 12: geographic differences are confounded with inspection practice by construction, because Chicago assigns inspectors by district and the dataset names none"
+  ],
+  "input_sha256_after": {
+    "evaluation_folds": "31dc7fac00c050165efa02fc005c73c7392fccaa1c3b5a2265afa3a037b442b7",
+    "recommendations": "c796822d12dd6a97cfbcf40950271784cecdb89fe340d7e752d453cc886b478c"
+  },
+  "inputs_unchanged": true,
+  "inversion_reason_required": "a row whose slot position disagrees with its final_policy_rank position must carry an inversion_reason other than none. There are no silent inversions and no flag that permits one; under strict priority with no external files, every row carries none and the validator requires it",
+  "inversions": 0,
+  "k_levels": [
+    "k_pct_01",
+    "k_pct_05",
+    "k_pct_10",
+    "k_1_day",
+    "k_1_week"
+  ],
+  "layer_separation": "model -> policy -> recommendation -> schedule -> execution. A calibrated probability never becomes a date without passing through a policy rank; a scheduling rule never edits a probability, a rank or a mechanism; an execution outcome never retroactively changes a recommendation or a plan that was already written",
+  "model_name": "xgboost_platt",
+  "no_constraint_aware_strategy": "no constraint-aware strategy exists because no operational constraint exists in this dataset to be aware of. Establishment closures, statutory deadlines, appointment windows and inspector availability are all absent (profile 7), and a strategy that traded off invented parameters would produce a schedule that looks considered and is arbitrary. The external adjustment contract is the supported way to move a row, because it carries an actor, a reason code and a timestamp -- a constraint somebody is accountable for",
+  "no_solver": "Component 14 adds no solver and no dependency. Strict priority preservation is a prefix operation with a closed form, not a search: final_policy_rank is unique and contiguous, so the assignment is unique and there is nothing to optimise over. Every constraint an optimiser would need -- travel time, duration, inspector count, skill matching -- is absent, so the model would be a model over invented parameters and its output would be an optimality claim with fabricated inputs",
+  "override_log_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_override_log_20260826T075812Z.parquet",
+  "override_log_sha256": "fa0bb15bd3955d12ef98aba997a9ae29dfa14558ff900eb7712d2acdafa18934",
+  "policies": [
+    "coverage_floor_double_share",
+    "coverage_floor_half_share",
+    "coverage_floor_population_share",
+    "coverage_forced_double_share",
+    "coverage_forced_half_share",
+    "coverage_forced_population_share",
+    "pure_risk"
+  ],
+  "policy_comparison_path": "",
+  "policy_comparison_sha256": "",
+  "policy_definition_version": "v1",
+  "primary_k_level": "k_1_day",
+  "priority_is_inherited": "final_policy_rank is the only ordering key this component has. Nothing here reads a score, a probability, a mechanism or a geography to decide who goes first, and a scheduler that preferred -- or preferred against -- a coverage-reserve row for a slot would be a second policy layer with no ADR behind it",
+  "recommendations_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\inspection_recommendations_20260826T075812Z.parquet",
+  "recommendations_sha256": "c796822d12dd6a97cfbcf40950271784cecdb89fe340d7e752d453cc886b478c",
+  "replan_backfill_rule": "a re-plan fills capacity freed by a not-performed inspection from the backlog in rank order, where Component 13's force_exclude deliberately does not backfill. The difference is what the freed capacity means: an excluded row is a decision that the slot should not be used, and re-filling it would overturn a human decision; a day that did not happen is capacity that still exists, and refusing to re-plan it would strand it. A cancellation -- by adjustment or in the field -- is a removal and is never backfilled, on the first rule",
+  "replan_preserves": "a re-plan appends a planning run and never mutates one. Completed rows keep their slot and are never rescheduled; every row on an operating day before the re-plan point is frozen whatever its status; original_scheduled_date and original_schedule_rank are copied forward untouched; and placement is ordered by final_policy_rank at every index, because that is the only ordering key this component has",
+  "replanning_runs": 1260,
+  "reserve_recommended": 3459,
+  "reserve_scheduled": 2447,
+  "reserve_slots_lost": 1012,
+  "row_counts": {
+    "capacity_utilization": 4984,
+    "execution_contract": 22,
+    "execution_log": 0,
+    "execution_summary": 1260,
+    "inspection_schedule": 141582,
+    "priority_preservation": 1260,
+    "replanning_runs": 1260,
+    "schedule_adjustment_log": 0,
+    "schedule_advisories": 7,
+    "schedule_backlog": 5488,
+    "schedule_configurations": 2,
+    "schedule_slots": 712,
+    "schedule_summary": 1260
+  },
+  "schedule_claim": "an operating plan produced by one stated strategy from one approved queue under one measured calendar. Revisable. NOT a claim that this is the right schedule, NOT a claim that it is optimal, and NOT a forecast -- every day in it is a day that has already happened",
+  "schedule_definition_version": "v1",
+  "scheduled_rows": 136094,
+  "scheduling_semantics": "Component 14 performs temporal and workload scheduling, not geographic route optimisation. The dataset has no inspector, no shift, no duration, no travel time and no road network, so a route here is not underdetermined -- it is unrepresented. Every slot is a position on an operating day, and every operating day and its slot count is measured from the fold's own observed inspection calendar",
+  "seconds": 26.23361420002766,
+  "selection_allocation_path": "",
+  "selection_allocation_sha256": "",
+  "strategies": [
+    "strict_priority"
+  ],
+  "temporal_boundary": "an execution event observed on day D may only affect assignments on operating days strictly after D. A historical plan is never rewritten: a re-plan produces a new planning run beside the old one, both are written, and the validator compares them row by row to prove that nothing before the re-plan point moved",
+  "three_human_layers": "a recommendation override is Component 13's and changes who is in the approved queue; a scheduling adjustment is Component 14's and changes when an approved row is worked; an execution deviation records what a person reports actually happened. Three contracts, three id namespaces, three disjoint action vocabularies, three tables. They are never merged into one generic override, and the reconstruction original recommendation -> approved recommendation -> planned schedule -> scheduling change -> execution outcome is available end to end because of it",
+  "total_cells": 1260
+}

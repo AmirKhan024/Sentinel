@@ -8,6 +8,67 @@ license = { text = "MIT" }
 
 # Runtime dependencies are deliberately minimal. Technologies are introduced
 # only when the component that needs them is actually being built.
+#
+# scikit-learn and numpy arrive with Component 6, the first component that fits
+# a model. Component 5 hand-rolled its metrics precisely to avoid buying a
+# runtime dependency for arithmetic; a penalised GLM solved by lbfgs is a
+# different order of thing, and Component 7 needs the same estimator API. See
+# ADR 0015.
+#
+# xgboost, lightgbm and optuna arrive with Component 7. Same rule as ADR 0015:
+# a gradient-boosted tree ensemble and a TPE sampler are algorithms, not
+# formulas -- a subtle defect in a hand-rolled version would surface as a
+# slightly worse model rather than as a wrong number, which is the failure mode
+# no test can catch. Both boosters are needed because the comparison between
+# them is the component's question, not an implementation detail. See ADR 0016.
+#
+# torch and matplotlib arrive with Component 8, and ADR 0016 required the
+# argument to be restated rather than assumed. It restates the same way, further
+# along the same line: what Component 8 needs is reverse-mode autodiff over
+# sparse embedding lookups, a fused numerically stable sigmoid-plus-BCE, batch
+# norm with separate train/eval behaviour, AdamW's decoupled weight decay,
+# gradient-norm clipping and a plateau scheduler. Hand-rolling that is
+# maintaining an autodiff engine, and a wrong gradient does not raise -- it
+# trains to a slightly worse optimum, which is exactly the failure mode ADR 0015
+# exists to refuse. The CPU wheel is deliberate: every fit in this project is
+# single-threaded and bit-reproducible, and a GPU cannot offer that. matplotlib
+# is a runtime rather than a dev dependency because the learning curves and the
+# embedding projection are deliverables of `sentinel train-neural`, not
+# developer conveniences; t-SNE comes from scikit-learn and umap-learn was
+# refused as a second view of one question. See ADR 0020.
+#
+# Components 11, 12 and 13 add NOTHING, and the rule is what says why. Component
+# 11's attributions are exact TreeSHAP (already in xgboost and lightgbm), a closed
+# form for the linear model, and a seeded permutation game -- `shap` stays dev-only
+# as a test oracle (ADR 0030). Component 12's group metrics are the same arithmetic
+# as Component 5's, restricted to a subset of rows. Component 13 is a deterministic
+# allocation over artifacts that already exist: a sort, a prefix count and a
+# subtraction. A policy engine that needed a solver would be describing a different
+# problem -- Component 14's -- and the dependency would arrive with it.
+#
+# Component 14 arrived, and the solver did not. The promise above was kept by
+# checking rather than by assuming, and the check is ADR 0043. Strict priority
+# preservation has a closed form -- walk the days in date order, walk the queue in
+# final_policy_rank order, stop when one runs out -- and that rank is unique and
+# contiguous, so the assignment is not merely optimal but unique. There is nothing
+# to search over. More decisively, every constraint an optimiser would trade off is
+# absent from this dataset: no inspector, no duration, no travel time, no road
+# network. An OR-Tools model over Sentinel's columns would be a model over invented
+# parameters, and its output would be an optimality claim backed by fabricated
+# inputs. A solver would also return a search-order-dependent solution among equal
+# objectives, which is the opposite of the byte-identity this project requires.
+# OR-Tools belongs to Component 15's routing, and Component 15 is blocked on the
+# same missing data that blocked Component 10 (ADR 0019).
+#
+# fastapi and uvicorn arrive for the same reason every dependency above did: the thing that
+# needs them is being built. The Sentinel API is not a model, a policy or a solver -- it is a
+# validated HTTP boundary over artifacts Components 1-14 already produced deterministically, and
+# it computes nothing. FastAPI buys request validation against pydantic models that already
+# exist (`Override`, `Adjustment`, `ExecutionEvent`), an OpenAPI contract for a future frontend
+# for free, and typed dependency injection suited to reading local Parquet files without a
+# hand-rolled routing layer. uvicorn is the ASGI server FastAPI is built on; there is no
+# reasonable alternative that avoids it. Neither model retrains, plans, schedules or decides
+# anything, and every write the API accepts is staged, never applied. See ADR 0048 and ADR 0049.
 dependencies = [
     "httpx>=0.27",
     "pydantic>=2.7",
@@ -15,6 +76,15 @@ dependencies = [
     "polars>=1.0",
     "pyarrow>=16.0",
     "duckdb>=1.0",
+    "scikit-learn>=1.5",
+    "numpy>=2.0",
+    "xgboost>=2.1",
+    "lightgbm>=4.7",
+    "optuna>=3.6",
+    "torch>=2.13.0",
+    "matplotlib>=3.11.1",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
 ]
 
 [project.scripts]
@@ -27,7 +97,32 @@ dev = [
     "respx>=0.21",
     "ruff>=0.5",
     "mypy>=1.10",
+    "shap>=0.48",
+    # shap reaches numba, and numba reaches llvmlite. Without these two floors
+    # the resolver backtracks numba to a release predating numpy 2.x, drags
+    # llvmlite 0.36 with it, and that sdist refuses to build on Python 3.12.
+    # Pinning the floors is what keeps numpy at the 2.5.2 ADR 0026's
+    # bit-identity gate is baselined on; downgrading numpy to satisfy shap
+    # would re-baseline every model in the project to obtain a test oracle,
+    # which is the tail wagging the dog.
+    "numba>=0.67",
+    "llvmlite>=0.49",
 ]
+# scikit-learn was a dev-only test oracle through Component 5: the evaluation
+# metrics are hand-implemented and the suite cross-checks every one against
+# sklearn. It is now also a runtime dependency (Component 6 fits models), so it
+# lives in [project.dependencies] and the suite keeps using it as an oracle.
+#
+# shap arrives with Component 11 and stays dev-only, which is the same shape.
+# The attribution Component 11 needs is already reachable without it: xgboost
+# and lightgbm each ship an exact TreeSHAP implementation behind
+# ``pred_contribs``/``pred_contrib``, and linear SHAP under an interventional
+# reference is the closed form ``coef_j * (z_j - E[z_j])``. Only the network
+# needs an approximation, and a permutation game over 30 columns is arithmetic
+# rather than an algorithm -- ADR 0015's own dividing line. So the values are
+# computed in-house and the suite cross-checks them against
+# ``shap.TreeExplainer`` and ``shap.LinearExplainer``, exactly as Component 5
+# cross-checks its metrics against sklearn. See ADR 0030.
 
 [build-system]
 requires = ["hatchling"]
@@ -45,6 +140,13 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+# FastAPI's dependency injection is spelled `param: T = Depends(...)` by design -- the call in
+# the default position is how the framework recognises a dependency, not the mutable-default
+# bug B008 exists to catch. Scoped to the three injection markers the Sentinel API actually
+# uses, not blanket-disabled.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path"]
+
 # --- mypy ----------------------------------------------------------------
 [tool.mypy]
 python_version = "3.12"
@@ -54,6 +156,34 @@ files = ["src/sentinel", "scripts"]
 
 [[tool.mypy.overrides]]
 module = ["duckdb.*"]
+ignore_missing_imports = true
+
+# scikit-learn ships no py.typed marker, so every symbol it exports is Any
+# under strict mode. The fitted estimator is therefore treated as opaque and
+# wrapped in a typed facade (``modeling.models.FittedModel``); values crossing
+# that boundary are converted explicitly rather than annotated optimistically.
+[[tool.mypy.overrides]]
+module = ["sklearn.*"]
+ignore_missing_imports = true
+
+# Same reasoning for Component 7's estimators and its sampler. xgboost and
+# lightgbm ship partial or absent type information and optuna's trial object is
+# dynamically typed by design, so each fitted booster is wrapped in a typed
+# facade (``boosting.models.FittedBooster``) and every value crossing that
+# boundary is converted explicitly. See ADR 0016.
+[[tool.mypy.overrides]]
+module = ["xgboost.*", "lightgbm.*", "optuna.*"]
+ignore_missing_imports = true
+
+# Component 8. torch ships a py.typed marker, so unlike every other estimator
+# dependency it needs no override -- the two places strict mode still objected
+# (``nn.Sequential.__call__`` returning Any, and ``nn.ModuleList.__getitem__``
+# returning Module rather than Embedding) are narrowed inside
+# ``neural/net.py`` rather than by widening this configuration. matplotlib has
+# no marker, so the figure code is confined to ``neural/figures.py`` and the
+# Any is contained there. See ADR 0020.
+[[tool.mypy.overrides]]
+module = ["matplotlib.*"]
 ignore_missing_imports = true
 
 # --- pytest --------------------------------------------------------------

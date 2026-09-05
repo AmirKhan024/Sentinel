@@ -1,0 +1,253 @@
+{
+  "approximation_notes": {
+    "cdph_2015_approximation": "APPROXIMATION, not a replication of Chicago's deployed 2015 model. Only 3 of that model's 10 input families are reachable from the current data contract (prior violation history, time since last inspection, business tenure). Unreachable: inspector identity (deliberately excluded -- audit Finding 1); nearby 311 complaints (not ingested); burglary intensity (not ingested); alcohol / tobacco licence (not ingested); weather / temperature (not ingested; needs NOAA GHCN USW00094846); facility type (in the raw snapshot, not in Component 4's feature table); CDPH risk category (in the raw snapshot, not in Component 4's feature table). The 2015 published result also used a different food code, a different target definition and a 14.1% base rate against this data's 52.52%, so its numbers are not a benchmark this project can be measured against. No coefficient, input or historical behaviour is fabricated."
+  },
+  "artifacts": [
+    {
+      "bytes": 1210344,
+      "path": "baseline_predictions_20260817T142118Z.parquet",
+      "row_count": 124608,
+      "schema": {
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_probability": "Boolean",
+        "model_definition_version": "String",
+        "model_name": "String",
+        "model_version": "String",
+        "score": "Float64",
+        "target_inspection_id": "String",
+        "trained_through": "Date"
+      },
+      "sha256": "a2bb94113bcc1c93ee913a06d30c0289c1724cc28f9d4669a5c194a100ff5b44"
+    },
+    {
+      "bytes": 25957,
+      "path": "baseline_coefficients_20260817T142118Z.parquet",
+      "row_count": 1530,
+      "schema": {
+        "fold_id": "String",
+        "fold_set": "String",
+        "imputed_fill_value": "Float64",
+        "model_definition_version": "String",
+        "model_name": "String",
+        "model_version": "String",
+        "scaler_mean": "Float64",
+        "scaler_scale": "Float64",
+        "standardized_coefficient": "Float64",
+        "term": "String"
+      },
+      "sha256": "e262fc8aa16491e3bed7694016d9d471efc9c6e56ff7f4078550f35605d05e04"
+    },
+    {
+      "bytes": 8903,
+      "path": "baseline_training_log_20260817T142118Z.parquet",
+      "row_count": 54,
+      "schema": {
+        "calibration_end_unused": "Date",
+        "converged": "Boolean",
+        "feature_count": "Int32",
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_approximation": "Boolean",
+        "matrix_column_count": "Int32",
+        "max_iter": "Int32",
+        "model_definition_version": "String",
+        "model_name": "String",
+        "model_version": "String",
+        "n_iter": "Int32",
+        "saturated_scores": "Int32",
+        "seed": "Int32",
+        "test_end": "Date",
+        "test_rows": "Int32",
+        "test_start": "Date",
+        "train_end": "Date",
+        "train_positive_rate": "Float64",
+        "train_rows": "Int32",
+        "train_start": "Date",
+        "trained_through": "Date"
+      },
+      "sha256": "c66e357a169fb794d7241d381f8b5c2d6b37e174063859d03c44a8b3d1736d5b"
+    }
+  ],
+  "blas_threads": "unset (library default)",
+  "blocked": [
+    "faithful CDPH 2015 replication: 7 of that model's 10 input families are not reachable from the current data contract (inspector identity, 311, crime, licence, weather, facility type, risk category), so an approximation ships instead and is labelled as one everywhere it appears",
+    "statutory 'days overdue' feature: needs the CDPH risk category to know what the deadline was, which is in the raw snapshot but not in Component 4's feature table; it belongs in Component 4 behind a bumped feature_definition_version",
+    "hyperparameter tuning: deliberately not done. A baseline exists to be trustworthy rather than optimal, and a tuning protocol belongs with the model that benefits from it"
+  ],
+  "built_at": "2026-08-17T14:21:18.924047+00:00",
+  "checks": [
+    {
+      "detail": "3 model(s) use only declared features",
+      "name": "features_exclude_forbidden_columns",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "feature_definition_version = v1",
+      "name": "feature_definition_version_is_single",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "54 fit(s) trained on exactly their fold's training window",
+      "name": "training_rows_respect_the_fold",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "no training row appears in a calibration or test split",
+      "name": "calibration_and_test_never_trained_on",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "342 imputation median(s) re-derived from the training window and matched",
+      "name": "preprocessing_comes_from_train",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "54 fit(s) declare their training end and never the calibration window",
+      "name": "trained_through_is_the_training_end",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "4 null-rule family/families have internally identical masks",
+      "name": "null_masks_are_identical_within_family",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 4 family indicators present in every fit",
+      "name": "indicator_columns_are_complete",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "54 fit(s) converged; iterations 43-83",
+      "name": "every_fit_converged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every coefficient has a matrix column and a scaler statistic",
+      "name": "coefficients_are_labelled",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "124608 prediction row(s) cover every test window exactly",
+      "name": "predictions_cover_every_fold_exactly",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every (model, fold, row) has exactly one score",
+      "name": "no_duplicate_prediction_rows",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "3 model(s) x 18 fold(s) all scored",
+      "name": "every_model_covers_every_fold",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 124608 scores finite in [0, 1]; observed 2.44108e-06..0.999603",
+      "name": "scores_are_probabilities",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every prediction row is self-describing",
+      "name": "prediction_metadata_is_complete",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 score(s) sit exactly at 0.0 or 1.0. Harmless for ranking and log_loss clamps, but it means the probability lost resolution there.",
+      "name": "saturated_scores",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "1 model(s) are labelled approximations and must never be presented as the model they approximate: cdph_2015_approximation",
+      "name": "approximation_models",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "Scores are raw predict_proba output. Component 9 owns calibration; Brier, log-loss, ECE and MCE from this run are diagnostics of an uncalibrated model and must not be described otherwise.",
+      "name": "probabilities_are_uncalibrated",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "training-window positive rate spans 0.5348..0.7731 across folds. Expanding windows dilute early years, so a later fold trains on a different base rate than an earlier one.",
+      "name": "train_base_rate_drift",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "code_version": "0.1.0",
+  "coefficient_rows": 1530,
+  "component": "baseline_models",
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "fit_seconds_total": 22.341,
+  "fits": 54,
+  "fold_sets": {
+    "covid_shift": 1,
+    "quarterly": 17
+  },
+  "folds": 18,
+  "indicator_columns": [
+    "missing_no_prior_canvass",
+    "missing_no_code_era_canvass",
+    "missing_no_inspected_canvass",
+    "missing_no_prior_inspection"
+  ],
+  "missing_value_rules": {
+    "days_since_any_inspection": "median",
+    "days_since_first_inspection": "median",
+    "days_since_last_canvass": "median",
+    "fail_at_last_canvass": "constant_false",
+    "name_changed_since_last_canvass": "constant_false",
+    "prior_canvass_fail_rate": "median",
+    "prior_canvass_priority_count": "median",
+    "prior_canvass_priority_foundation_count": "median",
+    "prior_canvass_priority_rate": "median",
+    "priority_at_last_canvass": "constant_false"
+  },
+  "model_definition_version": "v1",
+  "model_feature_counts": {
+    "cdph_2015_approximation": 19,
+    "logistic_regression": 26,
+    "logistic_regression_no_scheduling": 25
+  },
+  "model_params": {
+    "cdph_2015_approximation": "LogisticRegression(C=1.0, max_iter=1000, penalty='l2', solver='lbfgs', random_state=42, class_weight=None)",
+    "logistic_regression": "LogisticRegression(C=1.0, max_iter=1000, penalty='l2', solver='lbfgs', random_state=42, class_weight=None)",
+    "logistic_regression_no_scheduling": "LogisticRegression(C=1.0, max_iter=1000, penalty='l2', solver='lbfgs', random_state=42, class_weight=None)"
+  },
+  "models": [
+    "logistic_regression",
+    "logistic_regression_no_scheduling",
+    "cdph_2015_approximation"
+  ],
+  "numpy_version": "2.5.2",
+  "prediction_rows": 124608,
+  "score_direction": "descending: higher score = higher predicted violation risk",
+  "seeds": {
+    "cdph_2015_approximation": 42,
+    "logistic_regression": 42,
+    "logistic_regression_no_scheduling": 42
+  },
+  "sklearn_version": "1.9.0",
+  "trained_through_semantics": "fold.train_end -- the last reference date the fit was allowed to learn from. Component 6 fits no calibrator and never reads the calibration window, so it declares a horizon strictly earlier than the contract's ceiling of calibration_end."
+}

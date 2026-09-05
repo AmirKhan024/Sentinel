@@ -1,0 +1,126 @@
+{
+  "approval_id": "APPR-2026-09-04-001",
+  "approved_at": "2026-09-04T13:55:41Z",
+  "approved_by": "supervisor.demo",
+  "artifacts": [
+    {
+      "bytes": 24782,
+      "path": "approved_operational_plan_2026-09-04_20260904T135548Z.parquet",
+      "row_count": 30,
+      "schema": {
+        "approval_id": "String",
+        "approved_at": "String",
+        "approved_by": "String",
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "geographic_algorithm": "String",
+        "geographic_group_id": "String",
+        "geographic_group_label": "String",
+        "geographic_organization_definition_version": "String",
+        "highest_sentinel_rank_in_block": "Int64",
+        "is_selected": "Boolean",
+        "location_status": "String",
+        "n_prior_records": "Int64",
+        "operational_priority": "Int64",
+        "operational_selection_definition_version": "String",
+        "organization_mode": "String",
+        "plan_review_definition_version": "String",
+        "planning_date": "String",
+        "policy_id": "String",
+        "policy_rank": "Int64",
+        "rank": "Int64",
+        "requested_capacity": "Int64",
+        "secondary_no_history": "Boolean",
+        "selection_mechanism": "String",
+        "selection_reason": "String",
+        "suggested_order_in_block": "Int64",
+        "supervisor_decision_action": "String",
+        "supervisor_decision_actor": "String",
+        "supervisor_decision_decided_at": "String",
+        "supervisor_decision_id": "String",
+        "supervisor_decision_reason_code": "String",
+        "supervisor_revised_operational_priority": "Int64",
+        "supervisor_revised_planned_date": "String",
+        "supervisor_revised_work_block_id": "String",
+        "target_inspection_id": "String",
+        "threshold_km": "Float64",
+        "work_block_id": "String",
+        "work_block_label": "String"
+      },
+      "sha256": "a223c1ff14750a264174904cf40182f863523bce015b23ab8e6a96b4f8c3d3ea"
+    }
+  ],
+  "built_at": "2026-09-04T13:55:48.438266+00:00",
+  "code_version": "0.1.0",
+  "component": "approved_operational_plan",
+  "does_not_establish": [
+    "that Component 20's geographic organization is a driving route, a confirmed schedule, or a travel-time estimate. See Component 20's own NON_GOALS",
+    "that the selected inspection workload represents confirmed staffing or inspector appointments. Capacity here is Component 19's historical-activity-based estimate, not confirmed future staffing",
+    "that a KEEP_SELECTED decision is a supervisor's endorsement of Sentinel's model. It means only that no change was requested",
+    "that a DO_NOT_PROCEED_AS_PLANNED decision removes the establishment from Component 19's selected set or Component 20's plan. Both remain visible and unedited; only the decision log records the supervisor's intent",
+    "that ADJUST_OPERATIONAL_PRIORITY changes Sentinel's model-derived risk rank. It sets a separate, display-only operational_priority field; rank and policy_rank remain exactly Component 18/19's own values",
+    "that an APPROVED plan represents confirmed inspector staffing, a driving route, or a legal/regulatory sign-off. It records only that a named supervisor reviewed the proposed workload and elected to proceed with it, with whatever decisions were on record at that moment"
+  ],
+  "final_active_count": 30,
+  "final_deferred_count": 0,
+  "final_not_proceeding_count": 0,
+  "final_selected_count": 30,
+  "final_undecided_count": 30,
+  "inherited_limitations": [
+    "Component 19: capacity is derived from historical inspection activity, not confirmed future staffing; this component inherits that boundary and does not sharpen it",
+    "Component 20: geographic organization uses straight-line (Haversine) distance only; it does not know road networks, traffic, or travel time"
+  ],
+  "note": null,
+  "plan_review_cannot": "a supervisor plan decision changes only the plan decision log. It never edits calibrated_score, base_score, rank, policy_rank, selection_reason, selection_mechanism, geographic_group_id, or work_block_id. It never creates a Component 13 override or a Component 14 adjustment itself -- a decision to move an inspection or not proceed with it as planned is a distinct, additional, audited fact about the plan, not an edit to Component 19 or Component 20's own output. Turning that stated intent into a real capacity/schedule change remains a separate submission through Component 13's or Component 14's own contract",
+  "plan_review_definition_version": "v1",
+  "planning_date": "2026-09-04",
+  "readiness_checks": [
+    {
+      "detail": "0 establishment(s) appear more than once in the plan",
+      "name": "no_duplicate_establishments",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) are missing Sentinel's own policy_rank/selection_reason -- the machine recommendation must be present on every row",
+      "name": "every_row_carries_the_machine_recommendation",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) are missing Component 20's geographic organization fields",
+      "name": "geographic_provenance_present",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 recorded decision(s) have no reason_code -- refused at the parser already, re-checked here",
+      "name": "every_recorded_decision_has_a_reason",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "30 of 30 row(s) carry no supervisor decision and will proceed exactly as Sentinel proposed",
+      "name": "undecided_rows_default_to_the_machine_recommendation",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "source_decision_log_path": null,
+  "source_decision_log_sha256": null,
+  "source_plan_review_path": "supervisor_plan_review_2026-09-04_20260904T135537Z.parquet",
+  "source_plan_review_sha256": "c630e15bf313387a20d290644b21501f4bfbdf04d8329b5ebc97c6f3cfe1703a"
+}

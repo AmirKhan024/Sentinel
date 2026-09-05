@@ -1,0 +1,100 @@
+{
+  "allocation_source": "sentinel.policy.allocation.allocate() / .decide() -- Component 13's frozen risk-block-plus-coverage-reserve engine, applied unmodified to a policy.models.PolicyWindow built from Component 18's scored output",
+  "artifacts": [
+    {
+      "bytes": 2100538,
+      "path": "operational_selection_2026-09-04_cap30_20260904T135522Z.parquet",
+      "row_count": 35859,
+      "schema": {
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "candidate_definition_version": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "feature_definition_version": "String",
+        "has_location": "Boolean",
+        "is_selected": "Boolean",
+        "n_prior_records": "Int64",
+        "operational_scoring_definition_version": "String",
+        "operational_selection_definition_version": "String",
+        "planning_date": "String",
+        "policy_id": "String",
+        "policy_rank": "Int64",
+        "rank": "Int64",
+        "requested_capacity": "Int64",
+        "scoring_status": "String",
+        "secondary_no_history": "Boolean",
+        "selection_mechanism": "String",
+        "selection_reason": "String",
+        "target_inspection_id": "String"
+      },
+      "sha256": "4c2e220d5d28801725f153ff87dfc99fe491b8e2e045336964eb71c3158d36e4"
+    }
+  ],
+  "built_at": "2026-09-04T13:55:22.492126+00:00",
+  "capacity_utilization": 1.0,
+  "checks": [
+    {
+      "detail": "0 duplicate establishment_id among selected rows",
+      "name": "no_duplicate_selected_establishments",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every priority-set row appears exactly once in the selection output",
+      "name": "full_priority_queue_preserved",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "Component 18's rank and calibrated_score are byte-identical in the output",
+      "name": "component_18_rank_and_score_unchanged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "30 selected against a requested capacity of 30",
+      "name": "selected_count_never_exceeds_requested_capacity",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 location column(s) reachable from the allocation input: []",
+      "name": "allocation_input_excludes_location_columns",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "operational_selection",
+  "composite_model_name": "xgboost_platt",
+  "coverage_eligible_selected_count": 30,
+  "operational_scoring_definition_version": "v1",
+  "operational_selection_definition_version": "v1",
+  "planning_date": "2026-09-04",
+  "policy_id": "pure_risk",
+  "policy_mechanism": "none",
+  "policy_reserve_share": 0.0,
+  "priority_set_path": "operational_priority_2026-09-04_20260904T135512Z.parquet",
+  "priority_set_sha256": "de9b033a8044dac5ea4241716dc00dc9ff387325a12f6acc4bc1cf092d215ee2",
+  "ranked_candidate_count": 35859,
+  "requested_capacity": 30,
+  "reserve_selected_count": 0,
+  "risk_selected_count": 30,
+  "selectable_candidate_count": 35859,
+  "selected_count": 30,
+  "unfilled_capacity": 0,
+  "unscorable_count": 0,
+  "warnings": []
+}

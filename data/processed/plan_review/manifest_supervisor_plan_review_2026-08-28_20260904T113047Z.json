@@ -1,0 +1,117 @@
+{
+  "approval_status": "draft",
+  "artifacts": [
+    {
+      "bytes": 23387,
+      "path": "supervisor_plan_review_2026-08-28_20260904T113047Z.parquet",
+      "row_count": 30,
+      "schema": {
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "geographic_algorithm": "String",
+        "geographic_group_id": "String",
+        "geographic_group_label": "String",
+        "geographic_organization_definition_version": "String",
+        "highest_sentinel_rank_in_block": "Int64",
+        "is_selected": "Boolean",
+        "location_status": "String",
+        "n_prior_records": "Int64",
+        "operational_priority": "Int64",
+        "operational_selection_definition_version": "String",
+        "organization_mode": "String",
+        "plan_review_definition_version": "String",
+        "planning_date": "String",
+        "policy_id": "String",
+        "policy_rank": "Int64",
+        "rank": "Int64",
+        "requested_capacity": "Int64",
+        "secondary_no_history": "Boolean",
+        "selection_mechanism": "String",
+        "selection_reason": "String",
+        "suggested_order_in_block": "Int64",
+        "supervisor_decision_action": "String",
+        "supervisor_decision_actor": "String",
+        "supervisor_decision_decided_at": "String",
+        "supervisor_decision_id": "String",
+        "supervisor_decision_reason_code": "String",
+        "supervisor_revised_operational_priority": "Int64",
+        "supervisor_revised_planned_date": "String",
+        "supervisor_revised_work_block_id": "String",
+        "target_inspection_id": "String",
+        "threshold_km": "Float64",
+        "work_block_id": "String",
+        "work_block_label": "String"
+      },
+      "sha256": "cf210365a8eab6c204f098b15f56f28cb743f6091bdf3afca8581f57a1192fb1"
+    }
+  ],
+  "built_at": "2026-09-04T11:30:47.937835+00:00",
+  "checks": [
+    {
+      "detail": "Component 20's and Component 21's establishment sets are identical",
+      "name": "plan_rows_unchanged_by_review",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "calibrated_score, base_score, rank, policy_rank, selection_reason, selection_mechanism, geographic_group_id, work_block_id are byte-identical to Component 20's output",
+      "name": "immutable_fields_unchanged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "no decided rows in this plan review",
+      "name": "original_recommendation_never_overwritten",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "0 establishment(s) appear more than once in the plan review",
+      "name": "no_duplicate_decision_per_establishment",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "plan_review",
+  "decisions_path": null,
+  "decisions_recorded": 0,
+  "decisions_sha256": null,
+  "does_not_establish": [
+    "that Component 20's geographic organization is a driving route, a confirmed schedule, or a travel-time estimate. See Component 20's own NON_GOALS",
+    "that the selected inspection workload represents confirmed staffing or inspector appointments. Capacity here is Component 19's historical-activity-based estimate, not confirmed future staffing",
+    "that a KEEP_SELECTED decision is a supervisor's endorsement of Sentinel's model. It means only that no change was requested",
+    "that a DO_NOT_PROCEED_AS_PLANNED decision removes the establishment from Component 19's selected set or Component 20's plan. Both remain visible and unedited; only the decision log records the supervisor's intent",
+    "that ADJUST_OPERATIONAL_PRIORITY changes Sentinel's model-derived risk rank. It sets a separate, display-only operational_priority field; rank and policy_rank remain exactly Component 18/19's own values",
+    "that an APPROVED plan represents confirmed inspector staffing, a driving route, or a legal/regulatory sign-off. It records only that a named supervisor reviewed the proposed workload and elected to proceed with it, with whatever decisions were on record at that moment"
+  ],
+  "five_human_layers": "a recommendation override is Component 13's and changes who is in the approved queue; a scheduling adjustment is Component 14's and changes when an approved row is worked; an execution event is Component 14's and records what a person reports actually happened; a review resolution is Component 16's and records that a human looked at a flagged historical-policy case; a supervisor plan decision is Component 21's and records what a supervisor decided about an already geographically organized, already selected proposed workload. A plan decision never creates an override, an adjustment, or a review resolution itself -- those remain separate submissions through their own contracts",
+  "geographic_organization_definition_version": "v2",
+  "inherited_limitations": [
+    "Component 19: capacity is derived from historical inspection activity, not confirmed future staffing; this component inherits that boundary and does not sharpen it",
+    "Component 20: geographic organization uses straight-line (Haversine) distance only; it does not know road networks, traffic, or travel time"
+  ],
+  "location_available_count": 29,
+  "location_unavailable_count": 1,
+  "plan_artifact_path": "geographic_inspection_plan_2026-08-28_20260902T152847Z.parquet",
+  "plan_artifact_sha256": "ed7149a273042a9c6ca284b4b48abfc2d495a48cbb1c420e93b29d7ba62370ce",
+  "plan_review_cannot": "a supervisor plan decision changes only the plan decision log. It never edits calibrated_score, base_score, rank, policy_rank, selection_reason, selection_mechanism, geographic_group_id, or work_block_id. It never creates a Component 13 override or a Component 14 adjustment itself -- a decision to move an inspection or not proceed with it as planned is a distinct, additional, audited fact about the plan, not an edit to Component 19 or Component 20's own output. Turning that stated intent into a real capacity/schedule change remains a separate submission through Component 13's or Component 14's own contract",
+  "plan_review_definition_version": "v1",
+  "planning_date": "2026-08-28",
+  "selected_inspection_workload": 30,
+  "warnings": [],
+  "work_block_count": 21
+}

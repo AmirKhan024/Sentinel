@@ -1,0 +1,267 @@
+{
+  "artifacts": [
+    {
+      "bytes": 918254,
+      "path": "boosted_predictions_20260817T160354Z.parquet",
+      "row_count": 124608,
+      "schema": {
+        "boosting_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_probability": "Boolean",
+        "model_name": "String",
+        "model_version": "String",
+        "score": "Float64",
+        "target_inspection_id": "String",
+        "trained_through": "Date"
+      },
+      "sha256": "c8fcbd098f19650bc66434620ef97d2026af60318884d72282ecfa91c6ae66f3"
+    },
+    {
+      "bytes": 8874,
+      "path": "boosted_importances_20260817T160354Z.parquet",
+      "row_count": 1620,
+      "schema": {
+        "boosting_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "importance": "Float64",
+        "importance_kind": "String",
+        "model_name": "String",
+        "model_version": "String",
+        "term": "String"
+      },
+      "sha256": "912f85e3235543b323ffdd87cff6c5f32ef25d2f40d3ec456d025022d116e5c9"
+    },
+    {
+      "bytes": 10106,
+      "path": "boosted_training_log_20260817T160354Z.parquet",
+      "row_count": 54,
+      "schema": {
+        "boosting_definition_version": "String",
+        "calibration_end_unused": "Date",
+        "class_weighted": "Boolean",
+        "early_stopped": "Boolean",
+        "estimator": "String",
+        "feature_count": "Int32",
+        "fold_id": "String",
+        "fold_set": "String",
+        "matrix_column_count": "Int32",
+        "model_name": "String",
+        "model_version": "String",
+        "n_estimators": "Int32",
+        "saturated_scores": "Int32",
+        "scale_pos_weight": "Float64",
+        "seed": "Int32",
+        "test_end": "Date",
+        "test_rows": "Int32",
+        "test_start": "Date",
+        "train_end": "Date",
+        "train_nan_cells": "Int32",
+        "train_positive_rate": "Float64",
+        "train_rows": "Int32",
+        "train_start": "Date",
+        "trained_through": "Date",
+        "trees_built": "Int32"
+      },
+      "sha256": "625ebf2f375d4410788fa83f4f45151f19eb575f258d2a56ab9e6b2faa7cc64b"
+    }
+  ],
+  "blas_threads": "unset (library default; estimators pinned to n_jobs=1)",
+  "blocked": [
+    "inspector-effect modelling and inspector marginalisation: the Chicago food inspections dataset publishes 22 columns and none identifies an inspector. A mixed-effects model with inspector as a random intercept, and any marginalisation over an inspector effect, are undefined without that field -- so neither is approximated by a proxy. See ADR 0019",
+    "probability calibration: boosted probabilities are emitted raw and uncorrected. Platt scaling, isotonic regression and any operating threshold belong to Component 9, which is why the calibration window is left untouched by every fit here",
+    "SHAP attribution: Component 7 emits native split-gain importances as a diagnostic only. Attribution is Component 11's, and a condition number of 71.8 with one feature pair correlated at 0.9888 makes tree importances a poor substitute for it",
+    "ensembling xgboost with lightgbm or with the Component 6 logistic model: stacking and rank averaging come after the individual model stages, and blending before each member is understood would hide which one is carrying the result"
+  ],
+  "boosting_definition_version": "v1",
+  "built_at": "2026-08-17T16:03:54.994503+00:00",
+  "checks": [
+    {
+      "detail": "no fitted booster used an identifier, a label or a provenance column",
+      "name": "features_exclude_forbidden_columns",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "one feature definition version in play: v1",
+      "name": "feature_definition_version_is_single",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every one of 54 fit(s) used exactly its fold's training window",
+      "name": "training_rows_respect_the_fold",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "no fit reached past its declared horizon",
+      "name": "calibration_and_test_never_trained_on",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every matrix carried the source frame's NULLs through unchanged; no imputation and no scaling happened",
+      "name": "no_preprocessing_statistics_were_fitted",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "3404772 NaN cell(s) reached the estimators, so NULL-routing is exercised",
+      "name": "nulls_reached_the_estimator",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every fit declared its fold's training end, never the calibration end",
+      "name": "trained_through_is_the_training_end",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every final fit ran a frozen number of rounds with no validation window",
+      "name": "final_fits_did_no_early_stopping",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every importance has a matrix column name",
+      "name": "importances_are_labelled",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "class weighting appears only on the model that declares it",
+      "name": "class_weighting_is_not_the_default",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every model scored every test row of all 18 fold(s), exactly once",
+      "name": "predictions_cover_every_fold_exactly",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 124608 prediction row(s) are unique per model, fold and id",
+      "name": "no_duplicate_prediction_rows",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 3 model(s) scored all 18 scored fold(s)",
+      "name": "every_model_covers_every_fold",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 124608 score(s) are finite and inside [0, 1]",
+      "name": "scores_are_probabilities",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every prediction row declares its model, fold, horizon and probability flag",
+      "name": "prediction_metadata_is_complete",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every fit built the frozen number of trees",
+      "name": "every_fit_built_its_full_ensemble",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "no score sits exactly at 0.0 or 1.0",
+      "name": "scores_are_not_saturated",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "boosted_models",
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "fit_seconds_total": 21.422,
+  "fits": 54,
+  "fold_sets": {
+    "covid_shift": 1,
+    "quarterly": 17
+  },
+  "folds": 18,
+  "importance_rows": 1620,
+  "lightgbm_version": "4.7.0",
+  "matrix_columns": [
+    "prior_canvass_count",
+    "prior_canvass_count_code_era",
+    "prior_canvass_inspected_count",
+    "days_since_last_canvass",
+    "prior_canvass_fail_count",
+    "prior_canvass_pass_w_conditions_count",
+    "prior_canvass_fail_rate",
+    "fail_at_last_canvass",
+    "prior_canvass_priority_count",
+    "prior_canvass_priority_foundation_count",
+    "prior_canvass_priority_rate",
+    "priority_at_last_canvass",
+    "prior_inspection_count_any_type",
+    "days_since_any_inspection",
+    "prior_complaint_count",
+    "prior_reinspection_count",
+    "prior_license_inspection_count",
+    "name_changed_since_last_canvass",
+    "prior_canvass_count_current_name",
+    "days_since_first_inspection",
+    "canvasses_last_365d",
+    "canvass_priority_events_last_365d",
+    "canvasses_last_730d",
+    "canvass_priority_events_last_730d",
+    "canvasses_last_1095d",
+    "canvass_priority_events_last_1095d",
+    "missing_no_prior_canvass",
+    "missing_no_code_era_canvass",
+    "missing_no_inspected_canvass",
+    "missing_no_prior_inspection"
+  ],
+  "model_estimators": {
+    "lightgbm": "lightgbm",
+    "xgboost": "xgboost",
+    "xgboost_class_weighted": "xgboost"
+  },
+  "model_feature_counts": {
+    "lightgbm": 26,
+    "xgboost": 26,
+    "xgboost_class_weighted": 26
+  },
+  "model_params": {
+    "lightgbm/covid_shift": "bagging_fraction=0.6320623097532436, bagging_freq=1, bagging_seed=42, data_random_seed=42, deterministic=True, feature_fraction=0.8934942988225112, feature_fraction_seed=42, force_row_wise=True, lambda_l1=1.4203794299154232e-05, lambda_l2=0.2919393588867272, learning_rate=0.057811212728145885, max_depth=8, metric='average_precision', min_child_samples=44, n_estimators=54, n_jobs=1, num_leaves=10, num_threads=1, objective='binary', random_state=42, verbose=-1",
+    "lightgbm/quarterly": "bagging_fraction=0.7781136640014453, bagging_freq=1, bagging_seed=42, data_random_seed=42, deterministic=True, feature_fraction=0.6046947274523935, feature_fraction_seed=42, force_row_wise=True, lambda_l1=0.00021894473605833144, lambda_l2=7.095252963920867e-07, learning_rate=0.2992200240188712, max_depth=4, metric='average_precision', min_child_samples=54, n_estimators=63, n_jobs=1, num_leaves=16, num_threads=1, objective='binary', random_state=42, verbose=-1",
+    "xgboost/covid_shift": "colsample_bytree=0.6173166616787783, eval_metric='aucpr', learning_rate=0.05598704173922894, max_depth=3, min_child_weight=2.649550642462423, missing=nan, n_estimators=192, n_jobs=1, objective='binary:logistic', random_state=42, reg_alpha=1.994200257477126e-07, reg_lambda=0.02981913787127491, subsample=0.762140912352976, tree_method='hist'",
+    "xgboost/quarterly": "colsample_bytree=0.668974715332733, eval_metric='aucpr', learning_rate=0.1926324953901243, max_depth=4, min_child_weight=12.607179102564166, missing=nan, n_estimators=103, n_jobs=1, objective='binary:logistic', random_state=42, reg_alpha=1.0910568566546592e-08, reg_lambda=0.005889806219464979, subsample=0.7877818882255597, tree_method='hist'",
+    "xgboost_class_weighted/covid_shift": "colsample_bytree=0.6173166616787783, eval_metric='aucpr', learning_rate=0.05598704173922894, max_depth=3, min_child_weight=2.649550642462423, missing=nan, n_estimators=192, n_jobs=1, objective='binary:logistic', random_state=42, reg_alpha=1.994200257477126e-07, reg_lambda=0.02981913787127491, scale_pos_weight=0.29355267191171963, subsample=0.762140912352976, tree_method='hist'",
+    "xgboost_class_weighted/quarterly": "colsample_bytree=0.668974715332733, eval_metric='aucpr', learning_rate=0.1926324953901243, max_depth=4, min_child_weight=12.607179102564166, missing=nan, n_estimators=103, n_jobs=1, objective='binary:logistic', random_state=42, reg_alpha=1.0910568566546592e-08, reg_lambda=0.005889806219464979, scale_pos_weight=0.49855574812247255, subsample=0.7877818882255597, tree_method='hist'"
+  },
+  "models": [
+    "xgboost",
+    "lightgbm",
+    "xgboost_class_weighted"
+  ],
+  "numpy_version": "2.5.2",
+  "prediction_rows": 124608,
+  "preprocessing": "none. NULLs reach the estimator as NaN and are routed by a learned default direction at each split; no imputation and no scaling is fitted. The four null-rule family indicators are retained so the boosted and baseline matrices are identical and the C6/C7 comparison is unambiguous.",
+  "probability_semantics": "RAW predicted probability from predict_proba, NOT a calibrated probability. A boosted ensemble's probabilities are typically worse calibrated than a penalised GLM's; Component 7 measures that through Component 5's ECE and MCE and corrects none of it. Component 9 owns calibration.",
+  "score_direction": "descending: higher score = higher predicted violation risk",
+  "seeds": {
+    "lightgbm": 42,
+    "xgboost": 42,
+    "xgboost_class_weighted": 42
+  },
+  "sklearn_version": "1.9.0",
+  "trained_through_semantics": "fold.train_end -- the last reference date the fit was allowed to learn from. Component 7 fits no calibrator and, unlike a naive boosted implementation, does no early stopping in the final fit either, so the calibration window is untouched by model fitting. The boosting-round count came from a search confined to a region strictly earlier than any test window. ADR 0014, ADR 0017.",
+  "tuned_params_provenance": "sentinel tune-boosting --trials 100, 400 trials over 4 studies, 0 failed, 563.8s. Study artifact tuning_trials_20260817T155315Z.parquet sha256 a77687b7e56e34954b3463c64a071b3708ba2220b613efe041cd5235adec8b14, from as_of_features_20260816T150313Z.parquet (57,727 rows). TPESampler seed 20260817; xgboost 3.4.1, lightgbm 4.7.0, optuna 4.9.0.",
+  "xgboost_version": "3.4.1"
+}

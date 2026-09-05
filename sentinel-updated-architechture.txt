@@ -1,0 +1,599 @@
+Yes. I think the best move now is to **lock the product architecture before touching Component 13**.
+
+Based on the original Sentinel vision, the current codebase audit, and the requirement to stay honest about real vs configured data, this is the architecture I would choose.
+
+# Sentinel — Final Architecture
+
+## Core principle
+
+Sentinel should answer:
+
+> **Given a planning date, the establishments eligible for inspection, regulatory/policy requirements, available operational capacity, and geographic constraints—what inspection plan should the supervisor approve?**
+
+It is **not** just a risk dashboard.
+
+It is **not** a historical schedule viewer.
+
+It is an **inspection planning and decision-support system**.
+
+---
+
+# 1. The complete flow
+
+```text
+                         SENTINEL
+
+                             │
+                             ▼
+                  1. CREATE PLANNING RUN
+                             │
+                 ┌───────────┴───────────┐
+                 ▼                       ▼
+            Planning Date         Operational Inputs
+                                      • teams/resources
+                                      • working capacity
+                                      • start zones/locations
+                                      • planning assumptions
+                 └───────────┬───────────┘
+                             ▼
+                   2. BUILD CANDIDATE POOL
+                             │
+                             ▼
+                    3. AS-OF-DATE FEATURES
+                             │
+                             ▼
+                     4. ML RISK SCORING
+                             │
+                             ▼
+                   5. POLICY / RULE ENGINE
+                             │
+                ┌────────────┴────────────┐
+                ▼                         ▼
+          Required cases             Risk candidates
+                │                         │
+                └────────────┬────────────┘
+                             ▼
+                    6. REVIEW / DEFERRALS
+                             │
+                             ▼
+                  7. CAPACITY FEASIBILITY
+                             │
+                    ┌────────┴────────┐
+                    ▼                 ▼
+                Feasible       Capacity shortfall
+                    │                 │
+                    ▼                 ▼
+              Continue       Supervisor decision
+                             │
+                             ▼
+                 8. GEOGRAPHICALLY AWARE
+                    PLAN OPTIMIZATION
+                             │
+                             ▼
+                    9. PROPOSED PLAN
+                             │
+                             ▼
+                 10. HUMAN APPROVAL
+                     / MODIFICATION
+                             │
+                             ▼
+                 11. ASSIGNMENT / ROUTES
+                             │
+                             ▼
+                    12. INSPECTION
+                             │
+                             ▼
+                  13. OUTCOME LOGGING
+                             │
+                             ▼
+                  14. AUDIT / EVALUATION
+```
+
+---
+
+# 2. What we keep from the current Sentinel
+
+These are valuable and should **not be thrown away**:
+
+### Data and ML foundation
+
+* Real Chicago inspection data
+* Real Priority/Priority Foundation ground truth
+* Entity resolution
+* As-of-date feature construction
+* Leakage protection
+* Temporal validation
+* Existing trained models
+* Calibration/risk scoring
+* Ranking logic
+* Explainability work
+* Fairness/audit work
+
+This remains the **intelligence layer** of Sentinel.
+
+---
+
+# 3. What we change
+
+The biggest change is the product entry point.
+
+## Current mindset
+
+```text
+Historical planning fold
+        ↓
+Generate artifact
+        ↓
+Show selected establishments
+```
+
+## Final mindset
+
+```text
+Supervisor creates planning run
+        ↓
+Selects planning date
+        ↓
+Provides operational configuration
+        ↓
+Sentinel generates proposed plan
+```
+
+This does **not** mean we replace the real ML pipeline with fake data.
+
+The operational configuration is separate from the real historical data.
+
+---
+
+# 4. The data honesty boundary
+
+This is extremely important for the project.
+
+## Real data
+
+```text
+Chicago establishment
+Inspection history
+Violations
+Ground-truth outcomes
+Inspection dates
+Addresses
+Latitude/longitude
+ML predictions
+Historical evaluation
+```
+
+## User-provided operational inputs
+
+```text
+Resources available today
+Working capacity
+Start location / operational zone
+Planning assumptions
+```
+
+If we simulate an operational scenario for the prototype, the UI should say so clearly.
+
+For example:
+
+> **Operational configuration for this planning run**
+
+Not:
+
+> "Actual CDPH inspector availability."
+
+That makes Sentinel more rigorous and defensible.
+
+---
+
+# 5. Capacity architecture
+
+We should not permanently hardcode:
+
+> 30 inspectors = 30 inspections.
+
+Instead, Sentinel should use an abstraction:
+
+```text
+Available operational capacity
+```
+
+For the first operational version, I recommend:
+
+```text
+Planning date
+
+Available inspection teams: [ X ]
+
+Expected inspection capacity per team: [ Y ]
+
+Planning capacity = X × Y
+```
+
+Why start this way?
+
+Because the current real dataset does **not** give us reliable:
+
+* inspection duration,
+* travel duration,
+* inspector shifts,
+* real inspector assignments.
+
+So pretending to calculate exact 7-hour routes would be false precision.
+
+Later, the capacity model can be extended to:
+
+```text
+Team availability
++ working hours
++ estimated inspection duration
++ travel time
+```
+
+The architecture should support this from the beginning.
+
+---
+
+# 6. Location architecture
+
+Location should become a real operational layer.
+
+We already have real establishment location information.
+
+The new pipeline should preserve:
+
+```text
+Establishment
+├── address
+├── latitude
+└── longitude
+```
+
+through to the planning engine.
+
+## Location will initially be used for:
+
+### Geographic feasibility
+
+Don't select a highly scattered set if similarly prioritized establishments create a more feasible operational plan.
+
+### Geographic clustering
+
+Group candidate establishments into practical areas.
+
+### Assignment
+
+Assign geographically coherent groups to operational teams/resources.
+
+The first version should **not pretend to know real Chicago travel times** unless we actually introduce a verified travel-time source.
+
+So I recommend:
+
+### Version 1
+
+**Geographic clustering and distance-aware planning**
+
+### Later extension
+
+**Actual road/travel-time routing**
+
+This avoids overengineering while still making location genuinely important.
+
+---
+
+# 7. Policy engine
+
+The audit shows this is missing or incomplete.
+
+So we add an explicit layer:
+
+```text
+POLICY / PRIORITY ENGINE
+
+Candidate
+    │
+    ├── Required inspection?
+    │
+    ├── Reinspection requirement?
+    │
+    ├── Other explicit rule?
+    │
+    └── Otherwise → ML-prioritized
+```
+
+However, we must be careful here.
+
+We should **not invent Chicago statutory rules**.
+
+The policy engine should initially contain only:
+
+1. Rules genuinely supported by the available data/project specification.
+2. Configurable policy rules.
+3. Clearly labeled prototype assumptions where necessary.
+
+---
+
+# 8. Selection should not simply be "Top 30"
+
+This is important.
+
+The current ranking is still useful, but the final planner should do:
+
+```text
+Required cases
+        +
+High-priority risk candidates
+        +
+Operational/geographic feasibility
+        +
+Available capacity
+```
+
+Then select the best feasible plan.
+
+Conceptually:
+
+```text
+MAXIMIZE:
+
+Priority value
++ policy compliance
++ geographic efficiency
+
+SUBJECT TO:
+
+Available capacity
+Required cases
+Deferrals
+Human decisions
+Operational constraints
+```
+
+That is where Sentinel becomes more than a machine-learning ranking project.
+
+---
+
+# 9. Human-in-the-loop architecture
+
+Sentinel proposes.
+
+The supervisor decides.
+
+Every proposed establishment should have:
+
+```text
+Why is this included?
+
+• Priority score/rank
+• Relevant historical signals
+• Policy status
+• Geographic/operational context
+```
+
+The supervisor can:
+
+* Approve
+* Remove
+* Defer
+* Replace
+* Override
+
+And the system records:
+
+```text
+Original recommendation
+Decision
+Reason
+User action
+Timestamp
+Planning run
+```
+
+This existing audit philosophy should be preserved and expanded.
+
+---
+
+# 10. The actual user experience
+
+The first screen should become:
+
+# Create Inspection Plan
+
+```text
+Planning date
+
+[ August 28, 2026 ]
+
+Operational capacity
+
+Inspection teams: [ 10 ]
+
+Capacity per team: [ 3 ]
+
+──────────────────────
+
+Estimated planning capacity: 30 inspections
+
+[ Generate proposed plan ]
+```
+
+Then Sentinel shows:
+
+# Proposed Inspection Plan
+
+```text
+Planning date: August 28, 2026
+
+1,638 eligible establishments evaluated
+
+30 inspection slots available
+
+30 establishments proposed
+```
+
+Then a clear breakdown:
+
+```text
+6  Required / policy priority
+24 Risk-prioritized
+```
+
+Then:
+
+### Proposed inspection plan
+
+| Priority | Establishment | Why included                   | Area   | Decision |
+| -------- | ------------- | ------------------------------ | ------ | -------- |
+| 1        | X             | Highest priority signals       | Area A | Approve  |
+| 2        | Y             | Required rule                  | Area A | Approve  |
+| 3        | Z             | High priority + geographic fit | Area B | Review   |
+
+And a map/geographic view.
+
+---
+
+# 11. Navigation redesign
+
+I recommend:
+
+```text
+PLAN INSPECTIONS
+CURRENT PLAN
+PRIORITY QUEUE
+REVIEW & EXCEPTIONS
+OUTCOMES
+PLAN HISTORY
+SYSTEM / MODEL DETAILS
+```
+
+### Plan Inspections
+
+Create a new planning run.
+
+### Current Plan
+
+The proposed/approved inspections.
+
+### Priority Queue
+
+Remaining ranked establishments.
+
+### Review & Exceptions
+
+Deferrals, overrides, conflicts, shortfalls.
+
+### Outcomes
+
+Record and inspect completed outcomes.
+
+### Plan History
+
+Previous planning runs and decisions.
+
+### System / Model Details
+
+Evaluation, limitations, fairness, methodology.
+
+This separates **operations** from **technical documentation**.
+
+---
+
+# 12. What happens to the existing "Apr–Jun 2026" flow?
+
+I recommend we **preserve it internally as an evaluation/backtesting capability**.
+
+That historical fold is useful for proving:
+
+> "If Sentinel had operated during this historical period, how would its prioritization have performed?"
+
+But it should **not be the primary operational screen**.
+
+So there are two modes:
+
+```text
+OPERATIONAL MODE
+─────────────────
+Create plan for a planning date
+Use available as-of data
+Generate proposed plan
+
+
+EVALUATION / BACKTEST MODE
+──────────────────────────
+Historical test period
+Run the validated system
+Evaluate against known future ground truth
+```
+
+This is actually a major improvement architecturally.
+
+We stop mixing:
+
+> evaluation period
+
+with:
+
+> operational inspection date.
+
+That was one of the main causes of the current confusion.
+
+---
+
+# My recommendation for the next phase
+
+Before coding anything, we should create a precise **Current Sentinel → Final Sentinel migration plan**.
+
+Something like:
+
+| Existing Area                 | Decision                            |
+| ----------------------------- | ----------------------------------- |
+| Real data pipeline            | **KEEP**                            |
+| Entity resolution             | **KEEP**                            |
+| Feature engineering           | **KEEP**                            |
+| ML training/evaluation        | **KEEP**                            |
+| Risk scoring/ranking          | **KEEP**                            |
+| Apr–Jun operational UI        | **REDESIGN**                        |
+| Historical capacity semantics | **MODIFY / isolate to backtesting** |
+| Operational configuration     | **ADD**                             |
+| Location preservation         | **ADD**                             |
+| Geographic planning           | **ADD**                             |
+| Policy/mandate engine         | **ADD carefully**                   |
+| Human approval workflow       | **EXPAND**                          |
+| Priority queue                | **MODIFY**                          |
+| Inspector routing             | **PHASED ADDITION**                 |
+| Fake inspector data           | **DO NOT ADD**                      |
+
+## The key decision I am making
+
+I recommend we **do not jump directly to full OR-Tools-style routing yet**.
+
+That would force us to invent too many operational assumptions.
+
+Instead, we build Sentinel in two operational layers:
+
+### Phase 1 — Honest, strong operational planner
+
+* Date
+* Real candidate pool
+* Real ML scoring
+* Configured capacity
+* Real establishment coordinates
+* Geographic clustering/distance-aware selection
+* Policy rules
+* Human approval
+* Outcomes/audit
+
+### Phase 2 — Advanced routing
+
+Only after Phase 1 is solid:
+
+* Team-specific assignments
+* Start locations
+* Working hours
+* Estimated duration
+* Travel-time matrix
+* Route optimization
+
+This gives you a **usable system first**, rather than building an impressive-looking routing system based on invented assumptions.
+
+### So my recommendation is: **we lock this as the final direction and next create the exact component-by-component migration plan before asking Claude to modify any code.**

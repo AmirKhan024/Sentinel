@@ -4,8 +4,8 @@ Risk-prioritized food inspection scheduling using Chicago open data.
 
 The goal of Sentinel is to help a public health department decide **which food
 establishments to inspect next**, by combining a calibrated risk model with a
-deterministic statutory policy engine and constrained scheduling. Most of that
-system does not exist yet.
+deterministic policy engine and constrained scheduling. The risk model and the
+policy engine now exist; the scheduling and routing layers do not.
 
 This repository is being built **one component at a time**. See
 [STATUS.md](STATUS.md) for the authoritative project state.
@@ -14,10 +14,13 @@ This repository is being built **one component at a time**. See
 
 ## Current status
 
-**Components 1-9 complete: ingestion, entity resolution, target construction,
+**Components 1-9 and 11-14 complete: ingestion, entity resolution, target construction,
 as-of feature engineering, temporal evaluation, baseline risk models,
-gradient-boosted risk models, a neural network with entity embeddings, and
-probability calibration.**
+gradient-boosted risk models, a neural network with entity embeddings,
+probability calibration, feature attribution, a geographic equity audit, a
+deterministic decision policy with deployment governance, and an operational
+schedule laid against the calendar Chicago actually worked.**
+Component 10 is **blocked** — the dataset has no inspector field (ADR 0019).
 
 What exists today:
 
@@ -55,7 +58,7 @@ What exists today:
   sits inside the seasonality sensitivity band. Two very different nonlinear
   learners landing within 0.005 of a penalised GLM is evidence the ceiling is the
   feature representation, not the estimator.
-* 1,911 unit and integration tests with mocked HTTP, plus an opt-in live smoke
+* 3,009 unit and integration tests with mocked HTTP, plus an opt-in live smoke
   test.
 * **Neural network with entity embeddings**: a PyTorch MLP (embeddings for chain,
   facility type, community area and ZIP, concatenated with the same 30 standardised
@@ -89,7 +92,67 @@ What exists today:
   because fold N's calibration window **is** fold N−1's test window. Platt won all 90
   (model, fold) cells under a rule frozen in an ADR before any test window was opened.
 
-Nothing else. No scheduling, no policy engine, no agent. The
+* **Explainability and feature attribution**: for every supported model and every temporal
+  fold, the evidence structure behind a score — which features contributed, in which
+  direction, against a reference point that provably could not see the future. Exact
+  TreeSHAP for the boosters, the exact closed form for the logistic model, and a seeded
+  antithetic permutation game for the network, all in one output space (log-odds) so a
+  cross-model comparison is a comparison of models rather than of units. **The headline
+  finding is a disagreement**: the four models score within 0.0156 NDE of one another and
+  their feature-importance rankings correlate at only **ρ = 0.44** between the logistic
+  model and LightGBM, sharing 3 of their top 10 features. Near-identical accuracy,
+  substantially different reasoning — which strengthens Component 7's "the ceiling is the
+  representation, not the estimator" and removes any argument from explanation to model
+  choice. Quarter to quarter the reasoning is stable (consecutive-fold rank ρ 0.89–0.98);
+  over four years it drifts (first-to-last ρ 0.75–0.92). **Under the COVID regime shift
+  three of four models leaned 2–3× harder on `days_since_any_inspection`**, which is the
+  direct mechanism behind the model-ordering inversion Component 6 could only infer from an
+  ablation. One of the five candidates, `xgboost_chain_embeddings`, is reported
+  **unsupported** with a stated reason rather than explained through a private interface.
+* **A geographic equity audit**: every ranking, calibration and top-k question asked again
+  once per Chicago neighbourhood, over the two geographies this data can actually define —
+  community area and ZIP — with five others refused for measured reasons (the two published
+  ward layers disagree on **98.3%** of rows). 286 groups observed, **132 supported** at a
+  200-row floor and 154 recorded as `insufficient_support` with their counts rather than
+  dropped. **The within-city spread of ranking quality, 0.177 ROC-AUC, is larger than the
+  entire difference between the best and worst model in this project.** The sharpest finding
+  is about a group with no geography at all: `__UNKNOWN__` establishments are ranked at
+  chance, and of their 166 citations the top 5% found one. Nothing was fixed — a measured
+  disparity is advisory, never a build failure (ADR 0034).
+* **A deterministic decision policy**: the layer that turns a calibrated probability into a
+  capacity-constrained inspection queue, and prices every alternative. It settles which model
+  Sentinel carries (`xgboost_platt`) from a rule fixed in advance — **and records that all
+  four candidates were statistically indistinguishable on the headline metric**, so the tie
+  fell to calibration. Seven policies compared: pure risk prioritisation against coverage
+  floors and forced coverage reserves at half, exactly, and twice the measured no-history
+  population share. **The result is a negative one and it is the component's most valuable
+  output**: the risk queue already over-serves establishments with no code-era history by
+  four to five times their population share, so a coverage floor is inert in 338 of 340
+  quarterly cells, and a forced reserve at twice the share gives up **34 Priority citations a
+  week** to serve 343 more of them. Every recommendation records whether the model or the
+  policy put it there. No score is adjusted by geography, no quota exists, and where the
+  evidence does not pick a policy the run prints *the data does not determine the correct
+  policy* rather than picking one.
+
+* **An operational schedule**: the layer that turns the approved queue into a plan, because a
+  rank position is not something a person can execute. The horizon length is Component 5's own
+  capacity rule **read backwards** — `ceil(k / median_daily_rate)`, which reproduces `k_1_day`
+  as one day and `k_1_week` as five — and the operating days and their volumes are **read out of
+  the data**, not assumed: the dates Chicago actually inspected on and the real number of
+  inspections performed on each. So the component introduces no constant of its own. Two
+  measurements come out of it. First, Component 13's capacity assumption is optimistic: in **44
+  of 90** (fold, capacity) cells the real calendar cannot fit the queue that assumption
+  approved — **784 inspections** — while under the flat median the backlog is zero in every
+  cell, by construction. Second, and this is the component's most valuable output: Component 13
+  places its **coverage reserve at the tail of the rank order**, so a short horizon takes it
+  first — **1,012 of 3,459 reserve slots (29.3%) never get scheduled, and 91 of 273
+  reserve-bearing cells lose it entirely**. Component 14 reports that and deliberately does not
+  correct it, because correcting it would be re-ranking, which Component 13 owns. Priority is
+  preserved exactly (**0 inversions** across 1,260 cells), every human decision and every
+  real-world outcome is recorded in its own table, and **no route is optimised**: the dataset
+  has 22 columns and none of them is an inspector.
+
+Nothing else. No routing, no inspector assignment, no agent. The
 evaluation harness was built *before* any model existed, so the first model was
 measured by a yardstick it did not get to shape — and the models report no metrics
 of their own; they emit scores and hand them to the evaluator.
@@ -104,13 +167,17 @@ base rate moves 17 points between its calibration and test windows and **prior s
 something a monotone recalibration can fix**. And calibration made ECE *worse* on 16 of the
 85 quarterly (model, fold) cells; that is reported by a check deliberately incapable of failing, because
 a check that went red on a worse number would create pressure to tune until it went green.
+And Component 13's headline cost figures are quarter-scale: the one-day policy deltas are
+±1 to ±3 citations out of 348 across seventeen folds, which is inside the noise, and the
+findings document says so rather than quoting the flattering one.
 
 ---
 
 ## Architecture
 
-Five components: one path from the API to a model-ready training table, and one
-honest way to measure a ranking built on top of it.
+One path from the API to a model-ready training table, one honest way to measure a
+ranking built on top of it, and one deterministic layer that turns the ranking into a
+capacity-constrained recommendation.
 
 ```text
 Chicago Data Portal (Socrata SODA 2.1)
@@ -302,6 +369,45 @@ Chicago Data Portal (Socrata SODA 2.1)
                 ▼
         the same Component 5 contract, unchanged. Component 6's artifact is
         untouched — verified byte-identical — so "did C7 beat C6?" stays answerable
+
+
+        ---- Components 8-13: the same seam, five more times ------------
+
+        Every component after 7 attaches at the same two points and is not
+        redrawn above. Each one either produces scores that Component 5's
+        contract accepts, or consumes an artifact and writes to a layer of
+        its own:
+
+          8  neural network      -> predictions/ + an experimental categorical layer
+          9  calibration         -> predictions/ + calibration/   (probabilities)
+         11  explainability      -> explanations/                 (why a score)
+         12  fairness audit      -> fairness/                     (who it behaved how for)
+         13  decision policy     -> policy/                       (who to inspect, and why)
+         14  operational schedule -> scheduling/                  (when, and what it cost)
+
+        Component 13 is the one that changes the shape of the output rather
+        than adding to it. Everything above produces a DESCRIPTION; it
+        produces an INSTRUCTION:
+
+        data/processed/predictions/calibrated_predictions_<UTC>.parquet
+                │  + the as-of history column that defines coverage eligibility
+                │  + each window's measured median daily inspection rate
+                ▼
+        apply the frozen model-selection rule       policy/select.py
+                │  NDE (tied) -> calibrated ECE -> xgboost_platt
+                ▼
+        for each policy x fold x capacity           policy/allocation.py
+                │  risk block = top (k - reserve) by calibrated risk
+                │  reserve    = eligible rows the risk block did not take
+                │  NO SCORE IS WRITTEN, EVER
+                ▼
+        price every policy against pure_risk        policy/evaluate.py
+                │  the delta is reported in Priority citations
+                ▼
+        data/processed/policy/
+          inspection_recommendations_<UTC>.parquet  1,453,760 rows
+          policy_comparison_<UTC>.parquet           what each policy cost
+          policy_override_log_<UTC>.parquet         what a human decided instead
 ```
 
 **Component 4 asks "can my features see the future?". Component 5 asks "can my
@@ -408,6 +514,68 @@ Controlled by `SENTINEL_INCLUDE_COMPUTED_REGIONS` (default `true`). Full detail
 in [docs/api/socrata_findings.md](docs/api/socrata_findings.md) §6.
 
 ---
+
+        ---- Component 14: operational scheduling ----------------------
+
+        Component 13 says WHO, at a stated capacity, and why. It stops
+        there, because its own capacity is a rank position:
+
+            "capacity is a rank position derived from the window's
+             measured median daily inspection rate"
+
+        A rank position is not a plan. Nobody executes "you are the 137th
+        most important inspection this quarter"; they execute "you are on
+        Thursday". Component 14 crosses that gap, and refuses to cross any
+        other.
+
+        data/processed/policy/inspection_recommendations_<UTC>.parquet
+                │  the approved queue and its ranks, carried verbatim
+                │
+                │  + inspection_date, grouped -> the fold's OBSERVED
+                │    operating days and the real volume worked on each
+                │  + test_median_daily_capacity (Component 5)
+                ▼
+        horizon = ceil(k / median_daily) observed operating days
+                │  not a new constant: Component 5's capacity rule read
+                │  backwards. k_1_day spans one day, k_1_week spans five.
+                ▼
+        deterministic greedy slot allocation, in final_policy_rank order
+                │  reads no score, no mechanism, no geography
+                ▼
+        data/processed/scheduling/                    thirteen tables
+          inspection_schedule_<UTC>.parquet           when, and in which slot
+          schedule_backlog_<UTC>.parquet              approved, and not reached
+          priority_preservation_<UTC>.parquet         what the calendar cost
+          ...                                         + a manifest
+
+        Two capacity modes run by default, and only one is a measurement.
+        `observed_calendar` uses the volumes Chicago actually worked;
+        `flat_median` uses the median every day, which is what Component
+        13's cutoffs already assume -- and is therefore SATURATED BY
+        CONSTRUCTION at k_1_day and k_1_week. The gap between them is the
+        component's central measurement:
+
+            44 of 90 (fold, capacity) cells cannot fit their approved
+            queue into their own horizon -- 784 inspections in total.
+            Under the flat median the backlog is zero in every cell.
+
+        And the finding that surprised us, measured from inside Component
+        14 about Component 13:
+
+            Component 13 places the coverage reserve at the TAIL of the
+            rank order. A strict-priority schedule fills from the top, so
+            a short horizon takes the reserve first -- every time.
+            1,012 of 3,459 reserve slots (29.3%) are lost to the horizon;
+            91 of 273 reserve-bearing cells lose it entirely.
+
+        Component 14 reports that and does not correct it. Promoting
+        reserve rows would be re-ranking, which Component 13 owns.
+
+        What it does NOT do: no route optimisation, no inspector
+        assignment, no travel-time estimate. The dataset has 22 columns
+        and none of them is an inspector (ADR 0019); routing is Component
+        15's, and Component 15 is blocked on the same missing data.
+
 
 ## Data source
 
@@ -684,12 +852,91 @@ uv run sentinel evaluate --predictions data/processed/predictions/neural_predict
 # Run WITHOUT an OMP_NUM_THREADS override: the bit-identity gate is thread-sensitive.
 uv run sentinel calibrate --report
 uv run sentinel evaluate \n  --predictions data/processed/predictions/calibrated_predictions_<stamp>.parquet --report
+
+# Component 11 -- attribute the predictions to features (~19 min).
+# Same thread-sensitivity: the bit-identity gate re-proves the explained models are the
+# committed ones (166,144 scores compared with `==`, zero mismatches).
+uv run sentinel explain --report
+
+# Component 12 -- audit group behaviour across geography (~145 s).
+# Unlike calibrate and explain this has NO bit-identity gate and NO thread sensitivity:
+# it fits nothing and re-executes nothing. Its integrity claim is the opposite one --
+# every input's sha256 is compared before and after to prove nothing moved.
+uv run sentinel audit-fairness --report
+
+# audit and validate, writing nothing
+uv run sentinel audit-fairness --dry-run --report
+
+# one model, one geography
+uv run sentinel audit-fairness --models xgboost_platt --group-definitions community_area
+
+# Component 13 -- turn calibrated predictions into a recommended queue (~39 s).
+# Same integrity model as Component 12: fits nothing, re-executes nothing, and proves it
+# by comparing every input's sha256 before and after. Selects the production model from a
+# rule frozen in advance, compares seven policies, and prices each one in citations.
+uv run sentinel decide --report
+
+# decide and validate, writing nothing
+uv run sentinel decide --dry-run --report
+
+# compare one policy against the baseline, on a nominated model
+uv run sentinel decide --policies coverage_forced_double_share --model lightgbm_platt
+
+# apply a reviewer's override file; the deterministic queue is written unchanged
+# and every decision is logged beside it with its actor, reason and timestamp
+uv run sentinel decide --overrides overrides.json --report
 ```
 
 Every fit is single-threaded on the CPU with `torch.use_deterministic_algorithms(True)`,
 so re-runs are bit-identical. A CUDA device on the build machine is deliberately unused:
 GPU reductions are not bit-reproducible, and that is the standard every leakage test in
 this repository is written against. See [ADR 0020](docs/decisions/0020-pytorch-and-matplotlib-as-runtime-dependencies.md).
+
+### Turning the queue into a plan
+
+```bash
+# Component 14 -- lay the approved queue against the calendar Chicago actually worked (~28 s).
+# Same integrity model as Components 12 and 13: fits nothing, scores nothing, re-ranks nothing,
+# and proves it by comparing every input's sha256 before and after. Both capacity modes run by
+# default so the scenario's divergence from the observed calendar is always visible.
+uv run sentinel schedule --report
+
+# plan and validate, writing nothing
+uv run sentinel schedule --dry-run --report
+
+# the measured calendar only, one policy, one capacity level
+uv run sentinel schedule --capacity-mode observed_calendar --policies pure_risk --k-names k_1_week
+
+# apply a supervisor's scheduling adjustments; the deterministic plan is written unchanged
+# beside the log, and every offered change is recorded whether or not it changed anything
+uv run sentinel schedule --adjustments adjustments.json --report
+
+# record what the field says happened, and roll the plan forward from there
+uv run sentinel schedule --execution execution.json --report
+```
+
+There is deliberately no `--capacity`, `--slots-per-day`, `--horizon-days`, `--extend-horizon`
+or `--threshold` flag. Each would be a way to make a scheduling number better without scheduling
+anything better, and the test suite asserts that each stays absent.
+
+### Flagging cases for human review
+
+```bash
+# Component 16 -- flag deterministic review cases from the current queue and schedule.
+# No probability threshold anywhere: both triggers are boolean facts Components 13 and 14
+# already computed.
+uv run sentinel review --report
+
+# flag and validate, writing nothing
+uv run sentinel review --dry-run --report
+
+# apply a reviewer's resolutions; the queue is written unchanged beside the resolution log
+uv run sentinel review --resolutions resolutions.json --report
+```
+
+There is deliberately no `--threshold`, `--probability-threshold` or `--confidence-threshold`
+flag, and the test suite asserts each stays absent. See ADR 0051 and
+[`docs/data_contracts/human_review.md`](docs/data_contracts/human_review.md).
 
 ### Running the temporal evaluation
 
@@ -738,6 +985,22 @@ inspections that actually occurred; it cannot evaluate coverage, and it makes no
 causal claim. See
 [`docs/data_contracts/temporal_evaluation.md`](docs/data_contracts/temporal_evaluation.md) §1.
 
+### Running the Sentinel API
+
+```bash
+# a validated HTTP boundary over the artifacts above -- computes nothing, retrains nothing
+uv run sentinel serve
+
+# explicit bind, and autoreload for local development
+uv run sentinel serve --host 0.0.0.0 --port 8080 --reload
+```
+
+Interactive OpenAPI docs are served at `/docs` once running. See
+[`docs/data_contracts/sentinel_api.md`](docs/data_contracts/sentinel_api.md) for the endpoint
+list, the decision-scope contract, and why writes are staged rather than applied (ADR 0048,
+ADR 0049, ADR 0050). A minimal read-only frontend for testing this API end to end lives under
+[`frontend/`](frontend/README.md) — see "The Sentinel Frontend" below.
+
 ---
 
 ## Output
@@ -774,7 +1037,7 @@ The short version: `establishment_assignments` maps every `inspection_id` to an
 `establishment_id` and deliberately carries no dates, counts or outcomes, so a
 downstream join cannot pull whole-history information into a training row.
 
-The processed layer now holds **five** kinds of thing, each with its own directory and
+The processed layer now holds **ten** kinds of thing, each with its own directory and
 its own prohibition:
 
 ```text
@@ -784,7 +1047,42 @@ data/processed/evaluation/    measurements about models. Never trainable.  ADR 0
 data/processed/tuning/        hyperparameter search trials.                ADR 0018
 data/processed/neural/        Component 8's experimental categoricals.     ADR 0022
 data/processed/calibration/   fitted calibrators and their diagnostics.    ADR 0024
+data/processed/explanations/  feature attributions and their analysis.     ADR 0028
+data/processed/fairness/      group-conditional behaviour. Never a verdict. ADR 0032
+data/processed/policy/        decisions: who to inspect, and why. ADR 0036
+data/processed/scheduling/    plans: when, and what the calendar cost. ADR 0041
 ```
+
+The ninth and tenth are the only ones that are not descriptions of the world. Every other
+layer says what *is*; `policy/` says who to **inspect**, and `scheduling/` says **when**.
+Descriptions and instructions change for different reasons, are wrong in different ways, and
+are read by different people, so ADR 0036 and ADR 0041 keep them apart. Both carry the same
+prohibition as the eighth and for a sharper reason: a recommendation is downstream of every
+model here, and joined back onto training rows it would make the system's own past decisions
+an input to its future ones — the exact feedback loop Component 12 measured and Component 13
+was built to keep visible rather than to close.
+
+The tenth is separated from the ninth on the same argument, one step further out. A policy
+decision and a scheduled slot are different grains — the second is the first *plus a date plus
+a slot plus a planning run* — and they change for different reasons: a queue changes when a
+department changes its mind about coverage, a schedule changes when a Tuesday turns out to hold
+sixteen inspections instead of twenty-eight. Filed together there would be no convention saying
+which was which.
+
+The eighth had to answer a warning ADR 0028 left behind — that the taxonomy is getting long
+enough to be a burden. It earns its place the same way the sixth and seventh did: Component 5
+emits a `roc_auc` per (model, fold), and Component 12 emits one per (model, fold, geography,
+group, grain, stage). Filed in one directory there would be two authoritative answers for the
+same cell with no convention saying which is which. Its tables are keyed by **group** rather
+than by row, which is what stops them becoming per-establishment features — and a number
+meaning *"the model was well calibrated in this neighbourhood last quarter"*, broadcast back
+onto training rows, would be the most self-fulfilling input this project could construct.
+
+The last is the easiest to misfile, and ADR 0028 argues the near-miss explicitly. An
+attribution is not a *prediction* — it scores nothing and `evaluate --predictions` rejects
+it. It is also not an *evaluation result*, which is the more tempting mistake: a large
+`mean_abs_shap` says a model **relied** on a feature, not that it was right to, and filed
+beside `roc_auc` that distinction would not survive contact with a reader.
 
 The fifth is the newest and the most easily misread. Component 4's feature table has no
 categorical column at all, so Component 8 carries chain, facility type, community area
@@ -792,7 +1090,7 @@ and ZIP forward as-of from the raw snapshot into a layer of its own. It is **not
 feature table**, `feature_definition_version` is unchanged at `v1`, and no other
 component may join it onto anything.
 
-**Nothing in the last three may ever be joined onto a feature table**, and no number in
+**Nothing in the last five may ever be joined onto a feature table**, and no number in
 the tuning layer is a result — every one is measured on a validation window that is
 *training* data for the folds the chosen parameters are then used on. A search's best
 PR-AUC looks exactly like a result, which is why it is filed where it cannot be mistaken
@@ -808,7 +1106,7 @@ uv run pytest -v
 uv run pytest -m live         # opt-in: makes one real call to the Chicago API
 ```
 
-1,776 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
+3,190 tests pass and 3 live tests are deselected. Unit tests mock HTTP at the
 transport layer with `respx`, so real request
 construction, status handling, pagination and retry logic are all exercised
 without touching the network. Live tests are marked and deselected by default,
@@ -833,7 +1131,10 @@ src/sentinel/
   cli.py                       argparse CLI: ingest, query, resolve,
                                build-target, build-features,
                                train-baselines, tune-boosting,
-                               train-boosting, evaluate
+                               train-boosting, build-neural-categoricals,
+                               tune-neural, train-neural, calibrate,
+                               explain, audit-fairness, decide, schedule,
+                               review, evaluate, serve
   manifest.py                  generic manifest helpers (hash, read, write)
   ingest/
     socrata.py                 paginating, retrying Socrata client
@@ -841,6 +1142,87 @@ src/sentinel/
     manifest.py                ingestion provenance model
   query/
     duckdb_queries.py          DuckDB over the raw Parquet
+  api/                         the Sentinel API: a validated HTTP boundary over
+                               Components 1-16's artifacts. Not a numbered
+                               component -- ADR 0048, ADR 0049, ADR 0050, ADR 0051
+    app.py                     FastAPI app factory; no state of its own
+    deps.py                    Settings/pagination/scope dependency wiring
+    errors.py                  exception -> HTTP status mapping, in one place
+    schemas/                   request/response pydantic models per layer
+    services/                  artifact lookup, scope checks, staged writes
+    routers/                   HTTP only -- no business logic here
+  explain/                     Component 11: explainability and attribution
+    definitions.py             EXPLAIN_REGISTRY (the support matrix), the frozen
+                               budget and tolerances, import-time guard
+    refit.py                   re-executes the frozen fits; ADR 0026's gate, reused
+    background.py              temporally safe reference rows (training window only)
+    sample.py                  the label-blind, seeded explanation sample
+    attribute.py               tree / linear / permutation SHAP; no shap import
+    aggregate.py               importance, rank stability, drift, local cases
+    validate.py                twenty checks, each re-derived from the data
+    writer.py                  seven output schemas
+    figures.py                 six figure kinds, drawn from the tables only
+    build.py                   orchestration (the only module doing I/O)
+  policy/                      Component 13: decision policy and governance
+    definitions.py             the frozen grid, the selection rule, the boundary
+    inputs.py                  loading nine closed components' artifacts
+    select.py                  applying the production-model rule
+    eligibility.py             the coverage contract: one column, one predicate
+    allocation.py              risk block, coverage reserve, and the ranks
+    evaluate.py                comparison, opportunity cost, dominated policies
+    governance.py              warnings, and the human override layer
+    validate.py                18 errors (the policy) vs 4 advisories (its price)
+    writer.py                  eleven output schemas
+    figures.py / build.py      orchestration (the only module doing I/O)
+  scheduling/                  Component 14: operational scheduling
+    definitions.py             the horizon rule, both capacity modes, the boundary
+    models.py                  Horizon, QueueRow, Placement, SchedulePlan
+    inputs.py                  the authoritative scheduling input contract
+    horizon.py                 the observed calendar and its per-day capacity
+    allocation.py              deterministic greedy placement in policy-rank order
+    backlog.py                 approved and not reached, as a population
+    adjustments.py             a human changing WHEN an approved row is worked
+    execution.py               what the field reports happened; external, not computed
+    replan.py                  appends a planning run, never mutates one
+    evaluate.py                utilisation, inversions, wait, reserve survival
+    validate.py                28 errors (the plan) vs 7 advisories (its price)
+    writer.py                  thirteen output schemas
+    figures.py / build.py      orchestration (the only module doing I/O)
+  review/                      Component 16: deferral / human-review gate
+    definitions.py             two triggers, no threshold, the fourth human layer
+    models.py                  ReviewCase, ReviewResolution, ReviewManifest
+    trigger.py                 the two deterministic, threshold-free triggers
+    resolution.py              parsing and applying human review resolutions
+    inputs.py                  loading Component 13/14's artifacts, read-only
+    validate.py                8 errors (the queue) vs 2 advisories (its findings)
+    writer.py                  three output schemas
+    figures.py / build.py      orchestration (the only module doing I/O)
+  fairness/                    Component 12: the group-behaviour audit
+    definitions.py             the group registry incl. the REFUSED geographies,
+                               the frozen support floors, import-time guard
+    groups.py                  the group frame; the temporal leakage surface
+    support.py                 decided BEFORE any metric, and it shapes everything
+    metrics.py                 group-conditional; imports the canonical implementations
+    priority.py                selection rate AND capture, deliberately never combined
+    missingness.py             data availability by group; the Component 11 link
+    attribution.py             groups C11's artifact, never regenerates it
+    disparity.py / drift.py    four measures, never one score; trends only when earned
+    validate.py                13 errors (the audit) vs 3 advisories (the world)
+    writer.py                  ten output schemas
+    figures.py / build.py      orchestration (the only module doing I/O)
+  calibration/                 Component 9: probability calibration
+    definitions.py             CANDIDATE_REGISTRY and the pre-registered protocol
+    basescores.py              the regeneration seam and the bit-identity gate
+    train.py / predict.py      Platt and isotonic; fit, select, apply
+    metrics.py                 Brier decomposition, slope, bootstrap, ranking
+    validate.py / writer.py / figures.py / build.py
+  neural/                      Component 8: MLP with entity embeddings
+    definitions.py             NEURAL_REGISTRY, architecture constants, two guards
+    categoricals.py / encode.py   the experimental as-of categorical layer
+    net.py / train.py          the network, and one fit per fold with early stopping
+    embed.py                   the embeddings-into-XGBoost experiment
+    preprocess.py / predict.py / tuning.py / models.py
+    validate.py / writer.py / figures.py / build.py
   boosting/                    Component 7: gradient-boosted risk models
     definitions.py             BOOSTING_REGISTRY, the declared SEARCH_SPACE,
                                the frozen TUNED_PARAMS, import-time guard
@@ -902,6 +1284,11 @@ scripts/profile_target.py      read-only target profiling
 scripts/profile_features.py    read-only history-availability profiling
 scripts/profile_evaluation.py  read-only evaluation-surface profiling
 scripts/profile_baselines.py   read-only model profiling; train windows ONLY
+scripts/profile_boosting.py    read-only tuning-surface profiling
+scripts/profile_neural.py      read-only categorical-coverage profiling
+scripts/profile_calibration.py read-only calibration-window profiling
+scripts/profile_explanations.py read-only attribution-surface profiling; fixes
+                               Component 11's frozen constants before it is built
 tests/                         unit + integration tests; tests/fixtures/ holds
                                real regression cases as literal Python
 data/raw|interim|processed/    data layers; contents gitignored, manifests kept
@@ -915,8 +1302,16 @@ docs/decisions/                architecture decision records
 
 ## Project roadmap
 
-Components 1-7 are implemented. Everything below them is **planned, not
-implemented** — no code for any of it exists in this repository.
+Components 1-9, 11-14, and 16-21 are implemented; 10 and 15 are blocked, both on the same missing
+inspector/travel-time data (ADR 0019, ADR 0043).
+
+**Correction: 17-21 no longer refer to the original plan.** The original roadmap for 17-21
+(LangGraph orchestration, LLM-generated inspector briefings, deterministic briefing verification,
+an audit trail, and a frontend demo) was never built. After Component 16, the project's actual
+direction diverged from that plan and instead extended the live operational pipeline forward —
+Components 17-20 (operational candidate generation, scoring, capacity-constrained selection, and
+geographic organization) and Component 21 (supervisor plan review, adjustment, and approval), all
+described below. Only Component 15 keeps its original meaning.
 
 | # | Component | Status |
 |---|---|---|
@@ -930,22 +1325,93 @@ implemented** — no code for any of it exists in this repository.
 | 8 | Neural baseline | **Implemented** |
 | 9 | Probability calibration | **Implemented** |
 | 10 | Inspector-effect modelling | **Blocked** — the dataset has no inspector field (ADR 0019) |
-| 11 | SHAP explainability | Not implemented — C7 emits split-gain importances as a diagnostic only |
-| 12 | Fairness auditing | Not implemented |
-| 13 | Deterministic statutory policy engine | Not implemented |
-| 14 | Constrained scheduling | Not implemented |
-| 15 | OR-Tools routing | Not implemented |
-| 16 | Deferral / human-review gate | Not implemented |
-| 17 | LangGraph orchestration | Not implemented |
-| 18 | LLM-generated inspector briefings | Not implemented |
-| 19 | Deterministic briefing verification | Not implemented |
-| 20 | Audit trail | Not implemented |
-| 21 | Frontend demo | Not implemented |
+| 11 | SHAP explainability | **Implemented** — 4 of 5 candidates supported; `xgboost_chain_embeddings` reported unsupported (ADR 0031) |
+| 12 | Fairness and geographic equity audit | **Implemented** — 2 geographies audited, 5 refused with measurements (ADR 0032-0035) |
+| 13 | Decision policy and deployment governance | **Implemented** — 7 policies compared, production model selected, no policy winner declared (ADR 0036-0040) |
+| 14 | Constrained scheduling | **Implemented** — 13 tables, 2 capacity modes, 29.3% of the coverage reserve measured lost to the calendar (ADR 0041-0047) |
+| 15 | OR-Tools routing | Not implemented — blocked on missing inspector/travel-time data (ADR 0019, ADR 0043) |
+| 16 | Deferral / human-review gate | **Implemented** — two deterministic triggers, no probability threshold, a fourth human layer disjoint from override/adjustment/execution (ADR 0051) |
+| 17 | Operational candidate generation | **Implemented** — `src/sentinel/candidates/`; a live `planning_date` fed through Component 4's own feature SQL, unmodified |
+| 18 | Operational scoring | **Implemented** — `src/sentinel/operational_scoring/`; scores Component 17's candidates with the frozen production model, no retraining |
+| 19 | Operational (capacity-constrained) selection | **Implemented** — `src/sentinel/operational_selection/`; reuses Component 13's own `allocate()`/`decide()` engine unmodified |
+| 20 | Geographic organization | **Implemented** — `src/sentinel/geographic_organization/`; groups only the already-selected establishments, membership-preserving by construction |
+| 21 | Supervisor plan review, adjustment, and approval | **Implemented** — `src/sentinel/plan_review/`; four decision verbs plus a 5-point approval readiness checklist producing an immutable `approved_operational_plan` |
 
 Technologies for later components (PyTorch, OR-Tools, LangGraph, a frontend) are
 deliberately absent from `pyproject.toml`. Each is introduced only when the component
 that needs it is built — scikit-learn and numpy arrived with Component 6 (ADR 0015),
-and xgboost, lightgbm and optuna with Component 7 (ADR 0016).
+xgboost, lightgbm and optuna with Component 7 (ADR 0016), and torch and matplotlib with
+Component 8 (ADR 0020). Component 11 added **no** runtime dependency: `xgboost` and
+`lightgbm` already ship exact TreeSHAP, linear SHAP is a closed form, and `shap` itself is
+dev-only, used as a test oracle exactly as scikit-learn was through Component 5 (ADR 0030).
+Components 12, 13, 14 and 16 added none either: a group-conditional metric, a deterministic
+allocation, a deterministic placement and a deterministic review-flagging pass are all arithmetic
+over artifacts that already exist. Component 14 is where the solver was promised, and ADR 0043
+records why it did not arrive: strict priority preservation has a closed form over a unique,
+contiguous rank, and every constraint an optimiser would trade off — inspector, duration, travel
+time, road network — is absent from the dataset. OR-Tools belongs to Component 15's routing,
+which is blocked on that same missing data.
+
+### The Sentinel API
+
+A **Sentinel API** (`src/sentinel/api/`, run with `sentinel serve`) sits alongside these
+components as cross-cutting infrastructure — a validated read/write HTTP boundary over the
+artifacts Components 1-16 already produce deterministically. It is **not itself a numbered
+component**: it introduces no model, no policy, no schedule, and no route, and it does not
+occupy or redefine Component 15's place in the table above. Writes it accepts (overrides,
+scheduling adjustments, execution events, review resolutions) are staged for a human operator to
+apply through the existing `sentinel decide` / `sentinel schedule` / `sentinel review` commands,
+never applied by the API itself. See ADR 0048, ADR 0049, ADR 0050, ADR 0051, and
+`docs/data_contracts/sentinel_api.md` for the full contract.
+
+### The Sentinel Frontend
+
+A React + TypeScript + Vite frontend (`frontend/`) sits on top of the Sentinel API. It began as
+product-testing infrastructure for the read-only backtest/evaluation pages (Overview,
+Recommendations, Schedule, Backlog, Human Review, Establishment detail) and is, for those pages,
+**not a numbered component**. **Correction: it is no longer purely read-only.** Component 21
+(supervisor plan review, adjustment, and approval — see the roadmap table above) has its own
+frontend pages here (`SupervisorPlanReviewPage`, `GeographicPlanPage`) with real write actions —
+recording a decision, adjusting field-work order, approving a plan — each staged, never applied
+directly (ADR 0049), exactly like the backtest-side write forms below. It computes nothing and
+duplicates no model, policy or scheduling logic — every value rendered is read verbatim from an
+API response, and every write is validated against the same contract the batch CLI enforces.
+
+Built first for **product testing** (can a human browse every API resource and confirm it behaves
+as documented?), then rebuilt for **product clarity** (can a non-technical inspection supervisor
+open it and understand, in plain language, what Sentinel recommends and why, without first
+learning what a "fold" or a "policy id" is?). Every technical field, code and identifier from the
+first pass still exists -- it now lives one click away under each page's "Technical details"
+rather than being the first thing a visitor has to parse. `useDefaultScope` fills in a real,
+verified working scope automatically from the live manifests, so a first-time visit shows real
+data immediately instead of an empty scope form. See
+[`docs/analysis/frontend_product_clarity_20260828.md`](docs/analysis/frontend_product_clarity_20260828.md)
+for the full before/after.
+
+The backtest/evaluation pages remain **read-only**: no override, adjustment, execution-event or
+review-resolution forms, only `GET` requests, on that side of the app. Its decision-scope UX
+mirrors the API's own guarantee -- no request is fired
+while a required scope field (`policy_id`, `fold_set`, `fold_id`, `k_name`, and
+`schedule_config_id` for schedule/backlog views) is unset, and a `422 ambiguous_scope` response is
+rendered from its actual body rather than hidden. The one CORS middleware addition in
+`src/sentinel/api/app.py` (configurable via `Settings.api_cors_origins`) exists solely so a
+browser can call the API from `http://localhost:5173` in local development; it changes no other
+behavior. See [`frontend/README.md`](frontend/README.md) for how to run both processes together
+and what was deliberately left out.
+
+A final completion pass (2026-09-05) audited the whole system end to end for product coherence:
+`GeographicPlanPage`/`SupervisorPlanReviewPage` were reachable only via the top nav bar, not
+linked from `OverviewPage`/`TodayPage`/`EstablishmentDetailPage`, and the plain-language
+`WorkflowDiagram` on Overview described only the old 5-step backtest flow. Fixed with navigation
+links, a plain "for {date}" header on both pages (from data their own API responses already
+return), and an 8-step diagram. Seven raw technical-ID leaks (a bare establishment id, raw API
+error codes, a raw review id, a raw work-block-id fallback, two CLI command names in primary
+copy) were found and fixed, each moved into a "Technical details" section or replaced with plain
+language, never deleted. The one backend change: `operational_selection`'s manifest already
+computed candidate/eligible/selected counts that no API route exposed — one whitelist entry now
+makes them reachable, powering an honest "how many establishments were considered vs. selected"
+note on the Plan Review page. See `STATUS.md`'s "Final completion pass" section for the full
+detail, exact file list, and test counts.
 
 ---
 

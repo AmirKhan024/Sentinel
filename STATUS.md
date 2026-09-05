@@ -1,19 +1,84 @@
 # Current Status
 
-**Last updated:** 2026-08-17
-**Current component:** 9 of 21 — Probability Calibration
-**State:** Component 7 complete and verified against the full 57,727-row feature table.
-XGBoost and LightGBM, tuned under a protocol that cannot reach a test window, and a PyTorch
-network with entity embeddings. 1,776 tests
-pass; ruff, ruff format and mypy (strict) are clean.
+**Last updated:** 2026-09-05
+**Current component:** 21 of 21 (of the operational-planning extension; see "Not Started" below
+for the roadmap correction) — Supervisor plan review, adjustment, and approval ✅, followed by a
+final product-coherence completion pass, fixes for two real Side A/Side B conflation bugs
+("Today = April 1, 2026" and broken establishment navigation), and a final acceptance audit that
+found and fixed two more real gaps (see below) — Sentinel is now considered **COMPLETE** for its
+current scope.
+**Full backend regression suite (2026-09-05): 3,384 tests pass, 3 deselected** — re-run twice, the
+second time covering the audit pass's `geographic_organization` fixes; identical count both times.
+`ruff check`/`ruff format --check`/`mypy` clean on `src/sentinel/` except the pre-existing,
+documented Component 9 calibration-file formatting exception and the one unrelated
+`entity_service.py` E501. Frontend: **120 tests pass** (`tsc --noEmit` and `oxlint` both clean).
+See "The Sentinel Frontend" → "The 'Today = April 1, 2026' bug", "Fixed broken establishment
+navigation", and "Final acceptance audit" below
+for what changed most
+recently.
+**State (as of 2026-08-28, superseded by Components 17-21 below):** Components 1–9 and 11–14 and
+16 complete and verified against the full 57,727-row feature table; Component 10 blocked (ADR
+0019), Component 15 blocked (ADR 0019, ADR 0043). An
+end-to-end integration verification (2026-08-27) exercised the real CLI, API and frontend against
+committed artifacts and found and fixed two real integration bugs invisible to unit tests alone
+— see `docs/analysis/integration_verification_20260827.md`. A follow-up frontend product-clarity
+pass (2026-08-28) rebuilt the primary UI in plain language for a non-technical inspection
+supervisor, found and fixed one more real bug in the process, and changed no backend contract —
+see `docs/analysis/frontend_product_clarity_20260828.md`.
+**3,190 tests pass**, 3 deselected; ruff and mypy (strict, `src/sentinel`) are clean. `ruff format
+--check` fails on the same **10 Component 9 files** it has since Component 9 closed — 5 in
+`src/sentinel/calibration/`, 4 calibration test modules, and `scripts/profile_calibration.py`.
+Pre-existing, recorded in HANDOFF §16d, verified untouched by this work, and deliberately not
+fixed here because Component 9 is closed. Every
+Component 12, 13, 14 and 16 file is formatted.
+`uv run mypy src/sentinel` (the CI gate) is clean; `uv run mypy` over `scripts/` as well
+reports 14 pre-existing `attr-defined` errors in three older profiling scripts —
+`profile_boosting.py`, `profile_calibration.py`, `profile_explanations.py` — none of them
+Component 13's, and `scripts/profile_policy.py` is clean.
 
-**The measured answer:** the tree models beat the Component 6 logistic baseline on the
-quarterly mean — NDE 0.2326 → 0.2376, about **+2% relative** — but the logistic model wins
-**7 of 17 individual folds**, and its observed NDE sits *inside* XGBoost's seasonality
-redraw interval. Component 6's improvement over the heuristics survived that test;
-Component 7's improvement over Component 6 does not clearly survive it. Two very different
-nonlinear learners landing within 0.005 NDE of a penalised GLM is evidence that the ceiling
-here is the 26-feature representation rather than the estimator.
+**Component 14's measured answer:** the coverage reserve Component 13 went to the most trouble
+to make explicit is **substantially notional once a real calendar is applied**. Component 13
+fills the risk block at ranks 1..n_risk and places the reserve after it, so the reserve is
+*always* the tail of the rank order — checked, with no exception in any of the 273 reserve-bearing
+cells. A strict-priority schedule fills the horizon from the top, so when the horizon falls short
+the rows that fall off the end are the reserve rows, every time. **1,012 of 3,459 coverage-reserve
+slots — 29.3% — are lost to the horizon; 136 of 273 cells lose some and 91 lose it entirely.**
+Neither layer is wrong on its own terms: ADR 0037 priced the reserve in forgone citations and
+granted it a slot count, and nothing in that decision said the slots had to sit at the *end* of
+the queue. Component 14 **reports this and does not correct it** — promoting reserve rows would
+be re-ranking, which Component 13 owns.
+
+The second measurement is the one that decided the component's shape. Component 13's cutoffs
+descend from a quarter-wide median, so a schedule built on that same median is feasible before
+anything is measured. Built on the days Chicago actually worked it is not: **44 of 90 (fold,
+capacity) cells cannot fit their approved queue into their own horizon — 784 inspections — while
+under the flat median the backlog is zero in every cell.** Both modes ship, and the scenario is
+labelled a scenario everywhere it appears.
+
+**Component 13's measured answer:** the intervention everyone's intuition demands was aimed at
+a problem that is not there. Establishments with no code-era inspection history are 10.4% of the
+candidates and already take **40–58% of the top of the queue** under pure risk ranking — a
+selection ratio of **3.96 to 5.57** across all four candidate models — because their citation
+rate is genuinely higher (0.4883 against 0.4283). A coverage floor is therefore inert in **338
+of 340** quarterly cells at the population share, and a forced reserve at twice that share buys
+343 additional low-information inspections for **34 forgone Priority citations a week**. Seven
+policies were compared and **no winner was declared**: the trade-off is published and the choice
+is left as a governance decision. `xgboost_platt` is selected as the production model on
+calibration, after Component 5's own sensitivity bands showed all four candidates
+indistinguishable on discovery efficiency.
+
+**The measured answer:** Sentinel's ranking works, and it works measurably less well in some
+Chicago neighbourhoods than others. Within-group ROC-AUC spans **0.509 to 0.710** across the 51
+supported community areas — a spread more than twenty times the difference between the project's
+best and worst *model*. Component 9's global calibration improvement **did not reach every
+group**: for `xgboost` and `lightgbm` 25 of 33 supported community areas improved, and for
+`neural_numeric_only` only **17 of 33** did. And the 405 rows with no recoverable geography —
+which are the rows with no inspection history — are ranked at chance (0.509), selected at
+**0.20×** the city rate, and have **0.6%** of their violations captured by the top 5% against a
+city-wide 7.0%.
+
+None of that establishes discrimination, causality or a protected-class finding, and ADR 0035
+says so in those words. **A green run means the audit is sound, not that Sentinel is fair.**
 
 ---
 
@@ -530,31 +595,410 @@ any outcome; stated as a proposal because nothing downstream consumes it yet.
 
 ---
 
+## Component 11 — Explainability and Feature Attribution ✅
+
+Answers "why did Sentinel score this establishment this way?" for the models Components 6–8
+fitted and Component 9 calibrated. Reads existing models and existing predictions; changes
+neither. **Fits nothing, selects nothing, alters no prediction.**
+
+### What it implemented
+
+* `src/sentinel/explain/` — 11 modules: `definitions.py` (the support matrix and every frozen
+  constant, import-time guard), `models.py`, `refit.py`, `background.py`, `sample.py`,
+  `attribute.py`, `aggregate.py`, `validate.py`, `writer.py`, `figures.py`, `build.py`.
+* One command: `sentinel explain`.
+* A **seventh** processed layer, `data/processed/explanations/`, holding seven tables.
+* 173 new tests (1,911 → 2,084), 19 error-severity checks + 1 advisory, 29 figures.
+* ADR 0028 (the layer), 0029 (re-execution under ADR 0026's gate), 0030 (the attribution
+  protocol), 0031 (the unsupported model).
+* `scripts/profile_explanations.py` — 9 read-only profiles, run **before** the implementation,
+  which is what fixed every frozen constant.
+
+### The support matrix
+
+| model | method | exact |
+|---|---|---|
+| `logistic_regression` | closed form, `coef_j * (z_j − E[z_j])` | yes |
+| `xgboost` | native TreeSHAP (`pred_contribs`) | yes |
+| `lightgbm` | native TreeSHAP (`pred_contrib`) | yes |
+| `neural_numeric_only` | antithetic permutation, 8 rounds | **no** |
+| `xgboost_chain_embeddings` | — | **unsupported** (ADR 0031) |
+
+`xgboost_chain_embeddings`'s fitted booster is reachable only through
+`neural.embed._scorer_for`, a private process-local stash. Component 8 is closed, so it is
+reported unsupported with the measurement as its reason and the four-line public accessor
+proposed rather than taken. Its rows carry **nulls, never zeros** — zero is a legitimate
+attribution and a table of them would read as "this model used no features".
+
+### Results, measured (2026-08-25)
+
+72 re-executed fits in 438.6 s, attribution 647.3 s, ~19 minutes wall clock. **166,144 /
+166,144 test scores bit-identical to the committed artifacts, zero mismatches** (ADR 0029).
+21,600 explained predictions, 648,000 attribution values. All 20 checks pass.
+
+**The headline is a disagreement.** Cross-model rank correlation of the quarterly importance
+rankings:
+
+| pair | rank ρ | top-10 Jaccard |
+|---|---:|---:|
+| `lightgbm` vs `xgboost` | **0.9871** | 0.818 |
+| `logistic_regression` vs `neural_numeric_only` | 0.8033 | 0.667 |
+| `neural_numeric_only` vs `xgboost` | 0.6822 | 0.667 |
+| `lightgbm` vs `logistic_regression` | **0.4351** | 0.333 |
+
+Component 8 measured these four models landing within **0.0156 NDE** of one another.
+Component 11 shows those near-identical scores come from **materially different reasoning**.
+That strengthens Component 7's "the ceiling is the representation, not the estimator", and it
+removes any argument from explanation to model choice — there is no "the models agree" story.
+
+**What they leaned on.** Prior inspection history dominates every model:
+`prior_canvass_count_code_era` is rank 1 for three of four, `prior_canvass_count` for the
+fourth. Notably, the **missingness indicator** `missing_no_code_era_canvass` ranks 3rd for the
+logistic model and 2nd for the network — the *absence* of a record is among the most
+informative things these models have.
+
+**Stability.** Consecutive-fold rank ρ 0.9606–0.9753 for the tree and linear models, **0.8914**
+for the network. First fold to last (four years apart) falls to 0.7495–0.9197 with top-10
+overlap 0.538–0.818. Quarter to quarter the reasoning holds; over four years it measurably
+drifts, and between a third and a half of each model's top ten changed.
+
+**COVID, and it confirms Component 6.** Under the regime shift three of four models leaned
+2–3× harder on `days_since_any_inspection` (xgboost 0.1499 → **0.3728**, rank 3 → **1**;
+network 0.1232 → **0.3546**, rank 8 → **1**). Component 6 found the model *ordering inverting*
+on that fold and inferred from an ablation that the feature encodes scheduling policy.
+Component 11 shows the mechanism directly.
+
+### Artifacts
+
+```text
+data/processed/explanations/
+  explanation_values_<UTC>.parquet               648,000 x 20   the long grain
+  explanation_cases_<UTC>.parquet                 21,600 x 36   additivity + provenance
+  explanation_importance_<UTC>.parquet             2,400 x 16   per fold and per fold set
+  explanation_stability_<UTC>.parquet                 68 x  9   rank agreement
+  explanation_drift_<UTC>.parquet                    120 x 15   per-feature rank travel
+  explanation_representative_cases_<UTC>.parquet      12 x 14   high / medium / low
+  explanation_support_<UTC>.parquet                    5 x 15   incl. the unsupported model
+  manifest_explanation_values_<UTC>.json
+```
+
+### Verification
+
+```bash
+uv run python scripts/profile_explanations.py   # read-only, fixes the constants
+uv run sentinel explain --dry-run --report      # writes nothing
+uv run sentinel explain --report                # ~19 min; NO OMP_NUM_THREADS override
+```
+
+Tests with teeth: a background row dated after `train_end` turns the temporal check red; a
+later fold's background handed to an earlier fold is rejected; one recorded score perturbed by
+a **single ULP** turns the identity check red; `feature_127` is rejected; a fabricated
+attribution for the unsupported model is rejected; and `permutation_shap` is cross-checked
+against **brute-force Shapley enumerated over all 2^M subsets** — the definition itself, not
+another library. `tree_shap` and `linear_shap` match `shap` (dev-only) to **0.0**.
+
+---
+
+## Component 12 — Fairness and Geographic Equity Audit ✅
+
+**Question:** Sentinel decides who gets inspected first. Does it behave the same way
+everywhere in the city?
+
+**Answer:** No, and in four separate ways that are measured independently rather than
+collapsed into a score.
+
+### What it implemented
+
+* `src/sentinel/fairness/` — 14 modules: `definitions.py` (the group registry, including the
+  **refused** definitions, and every frozen constant behind an import-time guard), `models.py`,
+  `groups.py` (the group frame and its temporal proof), `support.py`, `metrics.py`,
+  `priority.py`, `missingness.py`, `attribution.py`, `disparity.py`, `drift.py`, `validate.py`,
+  `writer.py`, `figures.py`, `build.py`.
+* One command: `sentinel audit-fairness`.
+* An **eighth** processed layer, `data/processed/fairness/`, holding ten tables.
+* 247 new tests (2,084 → **2,331**), 13 error-severity checks + 3 advisories, 72 figures.
+* ADR 0032 (the layer), 0033 (the group frame and the refused geographies), 0034 (the support
+  policy and the advisory boundary), 0035 (what this component does not claim).
+* `scripts/profile_fairness.py` — 10 read-only profiles, run **before** the implementation,
+  which is what fixed every frozen constant.
+
+### The first component that re-executes nothing
+
+Component 9 had to regenerate scores that were never recorded; Component 11 had to regenerate
+the models themselves. Both did it behind ADR 0026's bit-identity gate. Every input Component
+12 needs already exists on disk, so its integrity claim is the opposite one — **nothing
+moved** — checked by re-reading every input's sha256 after the last table is written. No
+refit, no gate, no thread sensitivity.
+
+### What the data allowed
+
+| geography | status | why |
+|---|---|---|
+| `community_area` | **audited** | boundaries fixed since the 1920s; ADR 0023 handed it over explicitly |
+| `zip` | **audited** | better supported — 56 of 69 clear the floor against 51 of 78 |
+| ward | **refused** | the two published ward layers disagree on **98.3%** of rows: a ward id is a property of a boundary *version*, not of a place |
+| census tract | **refused** | 797 groups over 32,696 rows |
+| point geography, city/state, facility type | **refused** | ADR 0033 records each |
+
+**The as-of geography and the row's own recorded geography disagree on 0 of 57,041 community
+area rows and 0 of 57,326 ZIP rows**, so the temporally safe choice cost nothing. The refusals
+are rows in `fairness_group_definitions`, not sentences in a document.
+
+### Support came before metrics, and it is why the component is shaped this way
+
+The median (fold, community area) cell holds **16 rows**; 4 of 1,288 clear the 200-row floor.
+So the reporting grain is the pooled fold set — still strictly held out, and labelled on every
+row as *the system as operated over 2022Q2–2026Q2* rather than one estimator.
+
+Floors frozen from the profiler before any result: 200 rows / 20 positives / 20 negatives for
+ranking, **300** for calibration (15 equal-mass bins × 20 rows). **The bin count was not
+reduced to let more groups through**, because a group ECE at a different bin count would be
+incomparable with Component 9's global one — the exact comparison the component exists to make.
+
+Pooled quarterly: `community_area` 51 of 78 supported (33 for calibration); `zip` 56 of 69 (41).
+**The 27 excluded community areas are rows with real counts and a stated reason, never absent
+rows**, and a check compares the support table against the values observed in the data.
+
+### Results, measured (2026-08-25)
+
+**5 models × 2 geographies × 18 folds, 207,680 audited rows, 145 s.** All 13 error checks pass;
+13 advisory findings; inputs byte-identical before and after.
+
+**Before any model is involved**, the outcome rate spans **0.2200 → 0.5658** across supported
+community areas against a city-wide 0.4283. A working risk model is therefore *expected* to
+select at different rates; parity would mean ignoring a measured difference.
+
+**Ranking (calibrated, pooled quarterly, 51 community areas):**
+
+| model | min | max | spread |
+|---|---|---|---:|
+| `xgboost_chain_embeddings_platt` ⚠ | 0.5112 (`__UNKNOWN__`) | 0.7094 (ca 53) | **0.1982** |
+| `xgboost_platt` | 0.5092 (`__UNKNOWN__`) | 0.6971 | 0.1879 |
+| `neural_numeric_only_platt` | 0.5322 (`__UNKNOWN__`) | 0.7095 | 0.1773 |
+| `lightgbm_platt` | 0.5178 (`__UNKNOWN__`) | 0.6911 | 0.1733 |
+| `logistic_regression_platt` | 0.5241 (ca 45) | 0.6880 | 0.1640 |
+
+The within-city spread is **larger than the entire difference between the best and worst model
+in this project**, and community area 53 is the best-ranked group for all five.
+
+**Calibration — the finding section 18 of the brief exists to surface.** Component 9 cut global
+quarterly ECE by 20–25%. Per group it did not reach everyone:
+
+| model | community areas improved | mean ECE base → calibrated |
+|---|---:|---|
+| `lightgbm_platt` | 25 / 33 | 0.0934 → 0.0828 |
+| `xgboost_platt` | 25 / 33 | 0.0948 → 0.0844 |
+| `logistic_regression_platt` | 23 / 33 | 0.0966 → 0.0854 |
+| `neural_numeric_only_platt` | **17 / 33** | 0.0884 → 0.0862 |
+
+Coherent with Component 9 rather than against it: the network had the best *uncalibrated* ECE
+and least to gain. **Nothing was fixed** — a per-group calibrator would change Component 9 and
+is a fairness decision disguised as a repair (ADR 0034).
+
+**The sharpest finding is a group with no geography at all.** 405 quarterly rows carry
+`community_area = __UNKNOWN__`, and the chain closes with every link measured:
+
+```text
+59.5% no prior inspection of any kind (0.74% overall)  -- 80x
+61.7% no code-era canvass history     (10.4% overall)  --  6x
+      -> ROC-AUC 0.509 (chance) -> selected at 0.20x -> 0.6% capture vs 7.0% city-wide
+```
+
+Of its 166 real violations the top 5% found **one**. This is the missingness indicator
+Component 11 ranked 2nd/3rd in importance, resolved by neighbourhood. It is a measurement: "we
+have never inspected this place" is a true and relevant fact, and no causal direction is claimed.
+
+**Capture ranges 0.006 → 0.151 across supported community areas** against an overall 0.070, and
+selection rate and capture are reported separately throughout — a group can be prioritised often
+and still have its violations missed.
+
+**Temporal drift could not be answered.** Exactly **one** quarterly fold per (model, geography)
+has enough support to compute a disparity at all, so every series is `insufficient_folds` rather
+than a fitted line. `DRIFT_MIN_FOLDS = 3` was frozen before any series existed.
+
+**`covid_shift`, separately.** 8,840 rows — more than any single quarter — supporting **11 of 78**
+community areas and 5 for calibration. Reported as a stress-test observation; no trend claimed.
+
+### The advisory boundary, and why it is the most deliberate decision here
+
+```text
+the audit is WRONG   -> the build fails      (13 checks)
+the world is UNEVEN  -> recorded, exit 0     (3 advisories)
+```
+
+**No measured disparity can fail the build, and there is no flag to make one.** A red build is
+a demand for action, and the actions available are to change the model, the metric or the
+threshold — two of which are worse than the disparity. ADR 0034.
+
+`test_an_enormous_disparity_is_advisory_and_never_an_error` asserts a 0.95 ECE spread leaves
+every error check green and the exit code zero. That test is what keeps the component honest.
+
+### Artifacts
+
+```text
+data/processed/fairness/
+  fairness_group_metrics_<UTC>.parquet          122,850 rows   the long grain
+  fairness_priority_audit_<UTC>.parquet         136,850        selection AND capture
+  fairness_group_support_<UTC>.parquet                         every observed group
+  fairness_group_calibration_<UTC>.parquet                     base -> calibrated, per group
+  fairness_disparity_<UTC>.parquet                             four measures, never one score
+  fairness_drift_<UTC>.parquet                                 mostly insufficient_folds
+  fairness_group_missingness_<UTC>.parquet                     the Component 11 link
+  fairness_attribution_profiles_<UTC>.parquet                  grouped, never regenerated
+  fairness_bootstrap_<UTC>.parquet                             both resampling schemes
+  fairness_group_definitions_<UTC>.parquet                     incl. the REFUSED geographies
+  manifest_fairness_group_metrics_<UTC>.json
+```
+
+### What it must not be read as
+
+`does_not_establish` travels in every manifest and is printed on every run: **not causality,
+not discrimination, not the absence of bias, not legal compliance, not ethical acceptability,
+not equal treatment, not an optimal fairness policy.** And ADR 0019's gap is inherited rather
+than discovered — the target is that a violation was *cited*, and geography is close to the
+strongest available proxy for who inspected, so **this component cannot separate establishment
+risk from differential inspection practice.**
+
+### Verification
+
+```bash
+uv run python scripts/profile_fairness.py            # read-only; fixes the constants
+uv run sentinel audit-fairness --dry-run --report    # writes nothing
+uv run sentinel audit-fairness --report              # ~145 s; no thread override needed
+```
+
+Tests with teeth: a group mapping dated after its row turns the temporal check red; a same-day
+mapping does too; swapping base and calibrated is detected against the committed artifact with
+`==`; removing a small group from the support table is detected; a pooled `fold_set` is
+rejected; a changed input checksum is rejected; and shuffling the prediction rows produces a
+byte-identical artifact — which it did **not** until a canonical sort was added, because `ece`
+uses equal-mass bins and rows tied at a bin boundary were assigned by arrival order.
+
+---
+
+## Component 13 — Decision Policy and Deployment Governance ✅
+
+**Question:** Components 1–12 produce a calibrated probability. A probability is not an action.
+Given limited capacity, model uncertainty, coverage gaps and Component 12's audit, what exactly
+should Sentinel recommend doing?
+
+**Answer:** a deterministic policy layer that converts calibrated risk into a
+capacity-constrained queue, records for every establishment whether the model or the policy put
+it there, and prices every alternative in Priority citations. **Its most valuable result is a
+negative one:** the coverage intervention Component 12's finding appears to demand is aimed at a
+population the risk queue already over-serves fourfold.
+
+### What it implemented
+
+* `src/sentinel/policy/` — 12 modules: `definitions.py` (the frozen policy grid, the
+  model-selection rule, the vocabularies and the boundary, all behind an import-time guard),
+  `models.py`, `inputs.py`, `select.py`, `eligibility.py`, `allocation.py`, `evaluate.py`,
+  `governance.py`, `validate.py`, `writer.py`, `figures.py`, `build.py`.
+* One command: `sentinel decide`.
+* A **ninth** processed layer, `data/processed/policy/`, holding eleven tables.
+* 228 new tests (2,331 → **2,559**), 18 error-severity checks + 4 advisories, 4 figures.
+* `scripts/profile_policy.py` — eight read-only profiles, run **before** any policy constant
+  was frozen, and what caught the central surprise.
+
+### The production model, settled at last
+
+MEMORY open question 13 — which model Sentinel should carry — is **closed as a policy decision,
+not as a scientific one**. A lexicographic rule frozen in advance: discovery efficiency, then
+calibration, then precision at one day of capacity, then the model name.
+
+| model | NDE | sensitivity band | vs leader | calibrated ECE |
+|---|---:|---|---|---:|
+| `neural_numeric_only_platt` | 0.2482 | [0.2311, 0.2527] | tied | 0.0524 |
+| **`xgboost_platt`** | 0.2376 | [0.2224, 0.2444] | tied | **0.0474** |
+| `lightgbm_platt` | 0.2355 | [0.2201, 0.2419] | tied | 0.0490 |
+| `logistic_regression_platt` | 0.2326 | [0.2160, 0.2374] | tied | 0.0518 |
+
+**Axis 1 separates nothing.** Under Component 5's 1,000-replication label-flip study every
+candidate's NDE interval contains every other candidate's point estimate — corroborating
+Component 8's own conclusion that the network's advantage is the size of its seed noise. The
+rule fell to calibration and selected `xgboost_platt`.
+
+⚠ **The tie rule decides the deployment and was fixed after its inputs were first read.** The
+plan carried a placeholder borrowed from a *different metric* (a ROC-AUC spread of 0.0058), and
+under it `neural_numeric_only_platt` would have been selected instead. Both outcomes are emitted
+on every run and ADR 0039 records the sequence. `xgboost_chain_embeddings_platt` is excluded
+before any number is read (ADR 0022, ADR 0031).
+
+### The seven policies, and what they cost
+
+Pooled over 17 quarterly folds, `xgboost_platt`, at one week of real capacity (2,780 slots):
+
+| policy | reserve slots | citations | Δ | eligible served | Δ |
+|---|---:|---:|---:|---:|---:|
+| `pure_risk` | 0 | 1,657 | — | 1,170 | — |
+| `coverage_floor_population_share` | 0 | 1,657 | 0 | 1,170 | 0 |
+| `coverage_floor_double_share` | 2 | 1,657 | 0 | 1,172 | +2 |
+| `coverage_forced_half_share` | 133 | 1,649 | **−8** | 1,246 | +76 |
+| `coverage_forced_population_share` | 274 | 1,642 | **−15** | 1,325 | +155 |
+| `coverage_forced_double_share` | 556 | 1,623 | **−34** | 1,513 | +343 |
+
+The floor is nearly inert because the risk queue already clears it. The forced reserve buys
+coverage at a price reported in citations, and the price grows with capacity. **The one-day
+deltas (±1 to ±3 out of 348) are inside the noise and the findings document says so**, including
+where the noise flatters the component.
+
+### What it deliberately did not do
+
+* **Nothing changed for the `__UNKNOWN__` group.** At one day of capacity it gets 2 of 556 slots
+  and 1 citation found — **identical under all seven policies**. Eligibility is keyed to missing
+  *history*, and only 3.2% of that population sits in the no-geography group. A reserve that
+  reached it would be an allocation keyed to a failed geocode (ADR 0038).
+* No score adjusted by geography, no group-specific threshold or calibrator, no quota, no
+  probability threshold anywhere.
+* **No policy winner declared.** Two policies survive at the primary operating point and neither
+  dominates; the run prints *the data does not determine the correct policy* and
+  `a_winner_was_determined` fires as an advisory.
+
+### Reproducibility
+
+11 of 11 tables **byte-identical** across two independent production runs. Shuffling the
+prediction rows and the feature rows leaves the queue identical, asserted end to end and over a
+window of pure ties. Input checksums compared before and after every run. Refits,
+re-executions, bit-identity gates: **none** — this component reads artifacts and does
+arithmetic. The determinism claim is scoped in the manifest to *identical inputs including the
+override file*; human overrides are external decisions and are pinned by checksum rather than
+claimed reproducible.
+
+---
+
 ## In Progress
 
-Nothing. Components 1 through 9 are closed.
+Nothing. Components 1 through 9 and 11 through 13 are closed.
 
 ---
 
 ## Not Started
 
-Components 10–21. No code exists for any of them.
+**Correction (2026-09-02): the table below was stale.** Components 14 and 16 are implemented
+(see "Component 14" and "Component 16" sections further down this file) — the blanket "no code
+exists" claim above predates them and was never updated. Component 15 (OR-Tools routing) remains
+genuinely blocked for the reason stated. The original roadmap's 17–21 (LangGraph orchestration,
+LLM-generated briefings, deterministic briefing verification, audit trail, frontend demo) were
+never built; the project's actual direction after Component 16 diverged from that plan and
+instead extended the live operational pipeline — Components 17–20 (candidates, operational
+scoring, operational selection, geographic organization) and Component 21 (supervisor plan
+review) as described below. Only Component 15 keeps its original meaning and status.
 
 | # | Component | State |
 |---|---|---|
 | 9 | Probability calibration | **Implemented** |
 | 10 | Inspector-effect modelling | **Blocked** — no inspector field exists (ADR 0019) |
-| 11 | SHAP explainability | Not started — C7 emits split-gain importances as a diagnostic only |
-| 12 | Fairness auditing | Not started |
-| 13 | Deterministic statutory policy engine | Not started |
-| 14 | Constrained scheduling | Not started |
-| 15 | OR-Tools routing | Not started |
-| 16 | Deferral / human-review gate | Not started |
-| 17 | LangGraph orchestration | Not started |
-| 18 | LLM-generated inspector briefings | Not started |
-| 19 | Deterministic briefing verification | Not started |
-| 20 | Audit trail | Not started |
-| 21 | Frontend demo | Not started |
+| 11 | SHAP explainability | **Implemented** — 4 of 5 candidates supported (ADR 0028–0031) |
+| 12 | Fairness and geographic equity audit | **Implemented** — 2 geographies audited, 5 refused (ADR 0032–0035) |
+| 13 | Decision policy and deployment governance | **Implemented** — 7 policies compared, production model selected, no policy winner declared (ADR 0036–0040) |
+| 14 | Constrained scheduling | **Implemented** — see "Component 14" below |
+| 15 | OR-Tools routing | **Blocked** — same missing inspector/travel-time data as Component 10 (ADR 0019) |
+| 16 | Deferral / human-review gate | **Implemented** — see "Component 16" below |
+| 17 | Operational candidates | **Implemented** — `src/sentinel/candidates/`, live planning-date-scoped feature table. No `docs/data_contracts/candidates.md` yet (known gap, deliberately deferred — see the 2026-09-05 final completion pass below) |
+| 18 | Operational scoring | **Implemented** — `src/sentinel/operational_scoring/`, scores Component 17's candidates with the frozen production model. No `docs/data_contracts/operational_scoring.md` yet (same deferred gap) |
+| 19 | Operational selection | **Implemented** — `src/sentinel/operational_selection/`, capacity-constrained selection via Component 13's own allocation engine. No `docs/data_contracts/operational_selection.md` yet (same deferred gap); its manifest's coverage counts (`ranked_candidate_count`, `selectable_candidate_count`, `selected_count`) are exposed read-only via `GET /v1/manifests/operational_selection` as of the 2026-09-05 pass |
+| 20 | Geographic work organization | **Implemented** — `src/sentinel/geographic_organization/` (v2: work blocks, suggested order, organization-mode tradeoff); see `docs/data_contracts/geographic_organization.md` |
+| 21 | Supervisor plan review | **Implemented** — `src/sentinel/plan_review/`; see `docs/data_contracts/plan_review.md` |
 
 ---
 
@@ -566,8 +1010,25 @@ src/sentinel/
   config.py              Pydantic Settings (env prefix SENTINEL_)
   logging_setup.py       configure_logging()
   cli.py                 argparse: ingest, query, resolve, build-target,
-                         build-features, train-baselines, evaluate
+                         build-features, train-baselines, tune-boosting,
+                         train-boosting, build-neural-categoricals, tune-neural,
+                         train-neural, calibrate, explain, audit-fairness,
+                         decide, evaluate
   manifest.py            generic sha256 / read / write helpers
+  policy/                Component 13
+    definitions.py       POLICY_GRID, the selection rule, the vocabularies,
+                         DOES_NOT_ESTABLISH -- all behind an import-time guard
+    models.py            PolicyWindow, Allocation, Override, the manifest
+    inputs.py            the only module reading Parquet on the way in
+    select.py            the lexicographic production-model rule
+    eligibility.py       one column, one predicate, and what it refuses
+    allocation.py        risk block, coverage reserve, decide(), ranks
+    evaluate.py          cell metrics, opportunity cost, the frontier
+    governance.py        warnings_for, parse_overrides, apply_overrides
+    validate.py          18 error checks + 4 advisories; the ADR 0034 split
+    writer.py            eleven schemas, eleven total sort keys
+    figures.py           four figures; none marks a point optimal
+    build.py             run_policy (the only module touching the clock)
   ingest/
     socrata.py           SocrataClient: build_params, discover_fields,
                          fetch_page, iter_pages, bounded retry
@@ -646,6 +1107,11 @@ scripts/
   profile_evaluation.py  17 read-only profiles over the evaluation surface
   profile_baselines.py   10 read-only profiles; train windows only, never test
   profile_boosting.py     7 read-only profiles; train + calibration only
+  profile_calibration.py  read-only profiles over the calibration surface
+  profile_explanations.py read-only profiles over the attribution surface
+  profile_fairness.py    10 read-only profiles over the group-audit surface
+  profile_policy.py       8 read-only profiles over the decision surface;
+                          run BEFORE any policy constant was frozen
 ```
 
 Runtime dependencies: httpx, pydantic, pydantic-settings, polars, pyarrow,
@@ -857,19 +1323,41 @@ measured on a window that is training data downstream.
 
 ## Tests
 
-**Command:** `uv run pytest` · **Result: 1,776 passed, 3 deselected** (2026-08-18)
+**Command:** `uv run pytest` · **Result: 2,559 passed, 3 deselected** (2026-08-26)
 
 Component 2 added 265 tests, Component 3 added 201, Component 4 added 202,
 Component 5 added 278, Component 6 added 231, Component 7 added 235, Component 8 added
-287. Quality gate,
-all passing:
+287, Component 9 added 135, Component 11 added 173, Component 12 added 247, Component 13
+added **228**. Quality gate, all passing:
 
 ```bash
-uv run pytest                  # 1,776 passed, 3 deselected, 332 s
+uv run pytest                  # 2,559 passed, 3 deselected, 662 s
 uv run ruff check .            # All checks passed
-uv run ruff format --check .   # 164 files already formatted
-uv run mypy src/sentinel scripts   # no issues in 72 source files
+uv run ruff format --check .   # fails on 10 pre-existing Component 9 files; see Known Issues
+uv run mypy src/sentinel       # no issues in 133 source files
 ```
+
+| Component 13 area | Coverage |
+|---|---|
+| `test_policy_definitions.py` (24) | the frozen grid and the import-time guard shown raising on eleven distinct defects — a baseline that reserves capacity, a mechanism no policy exercises, an orphan reason code, a selection rule that cannot terminate, an empty boundary list |
+| `test_policy_allocation.py` (31) | floor versus forced semantics on hand-built windows; the reserve solved rather than assumed; disjointness and `n_risk + n_reserve == k` over a grid; ties broken on the id and never on row order |
+| `test_policy_evaluate.py` (18) | **precision, capture and lift matched exactly against Component 5's own top-k helpers on `pure_risk`** — the check that licenses computing over the queue instead of calling them — plus a case proving a coverage queue's number differs |
+| `test_policy_governance.py` (24) | the override contract: a blank actor, reason or timestamp refuses the whole file; displacement named; no backfill; id-order application; an inclusion with nothing left to displace raises rather than raising capacity |
+| `test_policy_leakage.py` (44) | the safety wall — a queue longer than capacity, an ineligible row in the reserve, a duplicated rank, a lost prediction row, a label column in a decision artifact, a warning input that moves the queue, an unattributed override, a changed input checksum. **And five tests asserting the opposite**: a reserve that gave up 34 citations, an inert reserve, a moved group share and the absence of a winner must all stay advisory |
+| `test_policy_determinism.py` (13) | two full runs byte-identical; shuffled predictions and shuffled features leave the queue identical; a window of pure ties, which is where Component 12's real ordering bug lived; the memoised order proven keyed by content rather than identity |
+| `test_policy_build.py` (22) | end to end over a synthetic snapshot; the manifest, the boundary, the checksum gate; **the whole component run twice, with and without the group artifacts, and the ranks compared** |
+| `test_cli_policy.py` (16) | registration, every flag, the refused model rejected before any artifact is read, and an advisory finding proven not to change the exit code |
+
+| Component 11 area | Coverage |
+|---|---|
+| `test_explain_definitions.py` (30) | the support matrix; the import-time guard shown raising on nine distinct defects, including a permutation method labelled exact and an unsupported model that still advertises one; every Component 4 feature proven to map to itself, so no undeclared aggregation is possible |
+| `test_explain_attribution.py` (18) | tree and linear SHAP matched to `shap` at **0.0**; permutation SHAP matched to **brute-force Shapley over all 2^M subsets** on a deliberately non-additive model; and `test_additivity_holds_at_one_round_and_is_therefore_not_evidence_of_accuracy`, which asserts both that additivity holds at one round *and* that one round is visibly wrong |
+| `test_explain_leakage.py` (19) | the safety wall — appended future rows leave a background bit-identical; a poisoned reference row turns the check red; a later fold's background is rejected; the sampler proven to ignore the label by corrupting every column it may not read |
+| `test_explain_contract.py` (34) | end to end against a real artifact; a one-ULP score perturbation detected; `feature_127` rejected; a fabricated attribution for the unsupported model rejected; the manifest proven to record only the artifacts the run actually read |
+| `test_explain_stability.py` (25) | rank/Spearman/Jaccard arithmetic against hand-computed cases; an extreme `covid_shift` fold proven not to move the quarterly aggregate by a single float |
+| `test_explain_writer.py` (27) | seven schemas, full sort keys, missing and unknown columns refused, a null `feature_value` surviving, byte-identical re-writes |
+| `test_explain_determinism.py` (7) | two full runs byte-identical across all seven tables, plus a control asserting the run is not trivially empty |
+| `test_cli_explain.py` (20) | the flag surface, the exit-code matrix, warnings not failing a run, and an absent Component 9 artifact proven to be a supported state rather than an error |
 
 | Component 7 area | Coverage |
 |---|---|
@@ -1202,7 +1690,10 @@ pairs overlap in time rather than succeeding one another.
    rather than a measurement.
 5. **Importances are a diagnostic, not an attribution.** Condition number 71.8 and one
    feature pair at 0.9888 correlation mean a tree splits credit according to which feature
-   it reached first. Component 11 owns attribution; SHAP is deliberately not implemented.
+   it reached first. Attribution is now Component 11's, in
+   `data/processed/explanations/` — use that, not `boosted_importances_*.parquet`. The
+   correlation caveat survives the upgrade: SHAP splits credit between correlated features
+   too, and discloses nothing about how.
 6. **Every fit is single-threaded**, which is what makes them bit-reproducible. That will
    not scale to a snapshot an order of magnitude larger, and relaxing it means giving up
    bit-identity — a decision that needs its own ADR rather than a quiet change.
@@ -1219,7 +1710,10 @@ pairs overlap in time rather than succeeding one another.
    `prior_canvass_count` / `prior_canvass_inspected_count` are correlated at 0.9888
    while carrying mean coefficients of +1.99 and -1.47 — one effect split across two
    terms. Seven of thirty terms change sign across folds, all with mean magnitude below
-   0.118. Component 11 owns attribution.
+   0.118. Attribution is now Component 11's. Note that its measured answer keeps those two
+   columns at ranks 1 and 2 for this model, which is the coefficient magnitude reappearing
+   rather than being corrected: a SHAP value on a linear model is
+   `coef_j * (z_j - E[z_j])`, so it inherits the collinearity exactly.
 2. **43.24% of violations are still discovered later** than business-as-usual under the
    best model, marginally worse than the best heuristic's 42.88%. Re-ordering under fixed
    capacity is zero-sum; any days-earlier headline must carry this number.
@@ -1339,57 +1833,564 @@ pairs overlap in time rather than succeeding one another.
 12. **CI has never run.** The workflow is committed but no push has yet
    triggered GitHub Actions. **NOT VERIFIED.**
 
+### Component 14 — Operational scheduling and execution planning
+
+Turns Component 13's approved queue into a plan against the calendar Chicago actually worked.
+Deterministic, fits nothing, scores nothing, re-ranks nothing, and adds **no dependency**.
+
+* `scripts/profile_scheduling.py` — 8 read-only profiles run before any implementation code.
+  `docs/analysis/scheduling_findings.md` holds the output, and every frozen constant in
+  `definitions.py` traces to a number in it.
+* `src/sentinel/scheduling/` — 15 modules: the frozen contracts, the typed structures, the input
+  contract, the horizon, the allocator, the backlog, the two external human contracts, the
+  re-planner, the measurements, the validator, the writer, the figures and the orchestrator.
+* `sentinel schedule` — CLI, with `--capacity-mode`, `--adjustments`, `--execution`, `--dry-run`
+  and `--report`. Deliberately **no** `--capacity`, `--slots-per-day`, `--horizon-days`,
+  `--extend-horizon` or `--threshold`; the suite asserts each absence.
+* Output under `data/processed/scheduling/` — a tenth processed layer, 13 tables plus a
+  manifest. Contract in `docs/data_contracts/inspection_schedule.md`.
+* ADRs 0041 (the tenth layer), 0042 (the five layers and the four boundaries), 0043 (temporal
+  scheduling without a route and without a solver), 0044 (the horizon is the capacity rule read
+  backwards), 0045 (strict priority, and its price falls on the reserve), 0046 (backlog is a
+  first-class outcome), 0047 (three human layers; execution is external).
+* **450 new tests** (2,559 → 3,009), including all 17 specified failure injections.
+
+**The horizon rule introduces no new constant.** `ceil(k / test_median_daily_capacity)` is
+Component 5's own capacity rule read backwards, and it reproduces both day-denominated cutoff
+names exactly — `k_1_day` spans one day, `k_1_week` spans five. Verified total across all 90
+(fold, capacity) cells: **0** demand more operating days than their fold contains.
+
+**The calendar is read, never generated.** An operating day is a date the recommendation
+universe carries. Three inspections in the snapshot fall on a weekend, so a synthesised
+Monday-to-Friday calendar would be wrong at the edges — and the holiday list it would need is
+something this project has no way to verify.
+
+**Verified on the full artifact:** 1,260 cells (2 capacity modes × 7 policies × 18 folds),
+141,582 queue rows, **136,094 scheduled**, **5,488 backlogged** across 308 cells, **11,067 idle
+slots** across 679 cells, and **0 inversions**. 28 error checks pass and 7 advisories fire.
+Inputs sha256-identical before and after. **13 of 13 tables byte-identical across two
+independent production runs**, and identical again under shuffled recommendation, adjustment and
+execution rows. Runs in ~12 s.
+
+**What it does not do, and cannot.** No route optimisation, no inspector assignment, no
+travel-time estimate: the raw table has 22 columns and none of them is an inspector, which is
+the same absence ADR 0019 recorded when it blocked Component 10. Routing is Component 15's, and
+Component 15 is blocked on that same missing data. The allocation is described as what it is —
+deterministic greedy allocation down an approved rank order — and no objective function is
+defined or solved anywhere in the component.
+
+**The execution layer is a contract with an engine, not a record.** The external adjustment and
+execution contracts are fully implemented, validated and tested, and both tables are **typed
+empty** on every run nobody supplies a file for. **No row in this repository describes anything
+that happened in Chicago.**
+
+---
 ---
 ## Next Component
 
-**Component 10 - Inspector-effect modelling. BLOCKED.**
+**Component 15 - OR-Tools routing.** Blocked, and blocked for the same reason Component 10 is.
 
-ADR 0019 stands: the dataset has 22 columns and no inspector field. Nothing in Component 9
-changes that. The next *implementable* component is 11 (SHAP) or 12 (fairness), and Component 12
-has an input waiting for it - Component 8's community-area ablation, built for exactly that
-purpose under ADR 0023.
+Component 14 is closed, so 15 is the next component in the roadmap — and it cannot be built on
+this data. Routing needs an inspector, a base location, a duration and a travel time, and the
+snapshot has none of the four. ADR 0043 records the check rather than the assumption:
+`scripts/profile_scheduling.py` profile 7 is the inventory, twelve operational fields a real
+inspection department schedules against, all absent. Adding OR-Tools and feeding it invented
+parameters would produce routes that look authoritative and describe nothing.
 
-### What the next component consumes
+**Component 16 — deferral / human-review gate — is now implemented.** See "Component 16" below.
+It used the two pieces Component 14 shipped for it: an external contract shaped like Component
+13's override, and a re-planner that appends rather than mutates.
 
-* `data/processed/predictions/calibrated_predictions_<stamp>.parquet` - **start here, not from
-  Components 6-8's raw scores.** 207,680 rows, five calibrated models x 18 folds, readable by
-  `evaluation.contract.read_predictions` with no translation.
-* `data/processed/calibration/calibrator_parameters_` and `calibrator_isotonic_breakpoints_` -
-  enough to re-apply any calibrator without re-running Component 9.
-* Everything Components 2, 3, 4 and 5 already own, unchanged.
+### What Component 14 leaves open
 
-### What it must not redo
+1. **Is the 29.3% reserve loss stable, or an artifact of `ceil(k / median)`?** A horizon one day
+   longer would recover much of it, and nothing measures which length is right.
+2. **Should Component 13 place the reserve at the tail at all?** That placement is what makes
+   the reserve the first casualty of a short horizon. Changing it is a Component 13 policy
+   change, not a Component 14 scheduling change, and this component was not entitled to make it.
+3. **Is the observed per-day calendar usable as *planning* capacity, or only as *evaluation*
+   capacity?** It is measured from the window it schedules, so it says what capacity existed,
+   not what a planner could have known on day one. A live deployment would need a forecast this
+   project has not built.
+4. **Are the adjustment and execution contracts usable by a real supervisor or a real field
+   inspector?** Tested against synthetic files only — the same open question Component 13
+   recorded for its override contract.
 
-* **Do not recalibrate.** The calibrators are frozen per (model, fold). Refitting one on a test
-  quarter - including "just to check" - reintroduces the leak ADR 0012 built the calibration
-  window to prevent.
-* **Do not re-fit a base model.** Component 9 re-executed them to recover a missing recording,
-  under a bit-identity gate. That is not licence to revisit them.
-* **Do not read `trained_through` as `train_end`.** On the calibrated artifact it is
-  `calibration_end`; the estimator's horizon is in `base_model_trained_through`.
-* **Do not average `covid_shift` into a quarterly mean.** Its probabilities are the least
-  trustworthy in the project (slope 0.75-0.90, ECE roughly double quarterly).
-* **Do not promote `xgboost_chain_embeddings`** on the strength of its calibrated Brier. It is an
-  experimental Component 8 derivative (ADR 0022) that lost on NDE.
+### What Component 15 must not redo
 
-### Still open
+* **Do not re-rank.** Component 13 owns the queue and Component 14 preserves it exactly. A
+  router that reordered by risk would be a third layer with an opinion about priority.
+* **Do not raise capacity.** Every horizon descends from the window's own measured median daily
+  rate. There is no flag that raises a slot count and the suite asserts the absence.
+* **Do not treat the coverage reserve as slack.** Component 14 measured what the calendar
+  already costs it; a router that spent it to shorten a drive would be making a policy change
+  invisibly.
+* **Do not let an execution outcome edit a plan.** `inspection_schedule` has no
+  `execution_status` column, deliberately, and that is what makes the guarantee structural.
+* **Do not join anything in `data/processed/scheduling/` onto a feature table.** It holds the
+  system's own past scheduling decisions, one layer further out than Component 13 already
+  refused to close.
+* **Do not fabricate an inspector.** Two components are now blocked on the absence. A third that
+  invented one would make all three unfalsifiable.
 
-* **Which model should Sentinel carry forward?** MEMORY open question 13. Component 9 sharpened
-  it without settling it: `neural_numeric_only` still wins NDE (0.2482) but now has the
-  *second-worst* calibrated ECE, while `xgboost` has the best (0.0474). The four families remain
-  within 0.0156 NDE, and the neural advantage remains smaller than its own seed noise.
-* **Seed averaging**, deferred by decision - it would create a base model Component 8 never
-  evaluated and break the bit-identity gate - rather than by oversight.
-* **The retraining trigger** proposed in `calibration_findings.md` 12.8 is a design proposal and
-  has not been validated against any outcome.
+### What Component 16 must not redo (now enforced, not merely planned)
 
-### What must not be re-derived
+* **Do not introduce a probability, score or confidence threshold.** ADR 0040 forbids it; there
+  is no `--threshold` flag and the suite asserts the absence.
+* **Do not create an override or an adjustment directly.** A `refer_to_override` /
+  `refer_to_adjustment` resolution records a pointer only.
+* **Do not reuse "defer"/"deferred" as a status or verb.** Component 14's
+  `ScheduleStatus.DEFERRED` means something structurally different, and the import-time guard
+  checks the literal substring, not just enum-value overlap.
 
-Identity is Component 2's, labels are Component 3's, features are Component 4's, the evaluation
-contract is Component 5's, the fitting/prediction contract is Component 6's, the tuning protocol
-is Component 7's, the experimental categorical layer is Component 8's, and the calibrators are
-Component 9's. Join on `target_inspection_id`; do not recompute any of them.
+---
 
-**Nothing in `data/processed/evaluation/`, `data/processed/predictions/`,
-`data/processed/tuning/`, `data/processed/neural/` or `data/processed/calibration/` may be
-joined onto a training table.** ADR 0013, ADR 0014, ADR 0018, ADR 0022, ADR 0024.
+## Component 16 — deferral / human-review gate
+
+Two deterministic triggers, both boolean facts an upstream component already wrote, no numeric
+threshold: `policy_warning_present` (a selected Component 13 recommendation carries a policy
+warning) and `no_execution_record_on_scheduled_row` (an occupying Component 14 schedule row has
+no matching row in the accumulated execution log). `queue_is_deterministically_rebuildable` proves
+neither trigger reads `score`, `base_score` or `final_policy_rank`.
+
+Measured against real data (2026-08-27): of 1,453,760 recommendation rows, 70,791 flagged —
+39,652 by the warning trigger, 70,791 by the execution-gap trigger. The execution-gap count is not
+an operational finding: the production `execution_log` is empty, so every occupying schedule row
+is, by construction, "missing" a report nobody has filed. See ADR 0051.
+
+A fourth human layer, disjoint from override/adjustment/execution by construction and by
+import-time guard, including an explicit check that no Component 16 vocabulary value contains the
+literal substring `"defer"`. The queue (`human_review_queue`) is rebuilt fresh each run; the
+resolution log (`review_resolution_log`) is append-only and permanent. CLI: `sentinel review`.
+API: `/v1/review/queue`, `/v1/review/resolutions` (stage-only, ADR 0049's pattern). See
+`docs/data_contracts/human_review.md` and `docs/interview/component_16.md`.
+
+---
+
+## The Sentinel API
+
+Built after Component 14, without claiming either name above. It is **not** "Component 15" and
+**not** "Component 16" — both keep their meanings unchanged (routing, blocked; the
+deferral/human-review gate, now built and described above). It is cross-cutting infrastructure
+(`src/sentinel/api/`, `sentinel serve`): a validated read/write HTTP boundary over Components
+1-16's existing artifacts, computing nothing.
+
+**Reads** compose existing Parquet artifacts into product-shaped JSON, behind a mandatory
+decision scope — a request that leaves out `policy_id`/`fold_id`/`k_name`/etc. gets a `422`
+naming what's missing, never a silently guessed "latest" row (ADR 0050).
+
+**Writes** (an override, a scheduling adjustment, an execution event) validate against the exact
+contracts Components 13 and 14 already define, then append to a staging file this package owns.
+Nothing is applied: turning a staged request into a new artifact is still a manual
+`sentinel decide` / `sentinel schedule` run by an operator (ADR 0049). There is no `POST` that
+recomputes a queue or a schedule, and no `PATCH`/`PUT` route exists on any resource — immutability
+is structural.
+
+**What it does not do:** no routing endpoint (same blocker as Component 15 — no inspector, no
+travel time), no authentication (documented gap, not a silent omission), no new database or
+message queue (a flat append-only file was sufficient; nothing measured yet justifies more).
+
+See ADR 0048, ADR 0049, ADR 0050, `docs/data_contracts/sentinel_api.md` and
+`docs/interview/api_layer.md`.
+
+---
+
+## The Sentinel Frontend
+
+Built after the Sentinel API, initially for product testing only, as a separate, minimal,
+read-only frontend. **Correction (2026-09-04): the sentence that used to stand here** ("not
+Component 21 -- that roadmap row stays 'Not implemented'") **is stale.** Component 21 was built
+after this section was originally written (see "Not Started" above) and the frontend below now
+includes its supervisor-facing plan-review and approval pages; the roadmap table is the current
+source of truth, not this paragraph's original wording. `frontend/`: React + TypeScript + Vite, no
+fabricated data, no client-side sort-column picker.
+
+**The one change to `src/sentinel/`:** CORS middleware added to `src/sentinel/api/app.py`
+(allowed origins from the new `Settings.api_cors_origins`, default `localhost:5173`), plus one new
+test file `tests/api/test_cors.py`. Nothing else under `src/sentinel/` was touched. Full Python
+suite re-verified after the change: **3,065 tests pass, 3 deselected** (up from the
+Component-14-era 3,009 by tests accumulated since, plus the 2 new CORS tests here); ruff and mypy
+`--strict` remain clean on `src/sentinel`.
+
+Frontend test suite (Vitest + React Testing Library + msw): **47 tests pass** (up from 33) across
+API client error classification, the scope selector's no-request-until-complete gating, and all
+six pages (Overview, Inspection Priorities, Establishment detail, Inspection Schedule, Waiting for
+Capacity, Human Review) — including a regression test that `recommendation.decision_reason` and
+`schedule.schedule_reason` render as two distinct fields, never merged (ADR 0042). `npm run
+typecheck` (`tsc -b --noEmit`) and `npm run lint` (`oxlint`) are both clean.
+
+### Product clarity pass (2026-08-28)
+
+The frontend above was technically correct but assumed the visitor already knew Sentinel's
+internal vocabulary (fold, policy id, raw reason codes). A second pass rebuilt the primary
+experience in plain language — Overview leads with the product story and real operational
+counts; every page's table now shows a plain-language status/reason beside the raw code, moved
+into a collapsed "Technical details" section rather than deleted; a new Human Review page exposes
+Component 16's existing, previously frontend-less API endpoints; the Establishment page now shows
+a five-step journey. `useDefaultScope` fills in a real, verified scope automatically from the
+live manifests so a first-time visit shows real data immediately. A genuine bug was found and
+fixed during this pass: calling react-router's `setSearchParams` once per scope field inside one
+effect silently dropped all but the last field, caught by the frontend's own tests (not manual
+inspection) timing out on "does the page ever show real data" rather than only "does a loading
+state appear." Fixed with a bulk `setScopeFields` setter. No backend file, ML model, or API
+contract changed. Full detail: `docs/analysis/frontend_product_clarity_20260828.md`.
+
+### Actionability & operational workflow pass (2026-08-28)
+
+A product reality check (self-critical, not a bug report) found the previous frontend told a
+supervisor what to investigate ("resolve this," "confirm what happened") with no mechanism to do
+either — every page was read-only — and treated `is_selected` as if it were a risk verdict, when
+it is a function of the current plan's capacity cutoff and can flip with nothing about an
+establishment changing. This pass closed both gaps without inventing any new backend behavior.
+
+**Backend (read-path only — no write, no policy, no scheduling logic touched):** four filters
+added, mirroring the existing `establishment_id`/`schedule_status` filter precedent —
+`target_inspection_id` on `GET /v1/policy/overrides`, `GET /v1/schedule/adjustments`,
+`GET /v1/execution/events`, `GET /v1/review/resolutions`; `trigger` (a literal substring match
+against the existing pipe-joined `trigger_reasons` column) on `GET /v1/review/queue`, so a caller
+can ask for `policy_warning_present` or `no_execution_record_on_scheduled_row` cases separately
+without any new classification existing server-side. 6 new backend tests (`tests/api`: 82 → 88,
+all passing); `ruff`/`mypy --strict` clean on `src/sentinel`. A pre-existing documentation error was found and corrected while
+reading these services: `OverrideLogRowOut.status`, `ResolutionLogRowOut.status` and
+`ReviewCaseOut.status` all claimed a still-staged row would show as pending/`pending_review` —
+none of the four log-read services ever read the staging store; `status` is unconditionally
+`"committed"`. Docstrings and `docs/data_contracts/sentinel_api.md` now say so; the frontend's
+"Decision history" panel works around it by querying `GET /v1/staged-requests` separately and
+merging client-side, which is what actually works today.
+
+**Frontend — four real write forms**, each submitting exactly its backend contract's fields,
+validated the same way the batch CLI validates them, staged and never applied (ADR 0049, stated
+explicitly on every confirmation): `OverrideForm` (force_include/force_exclude), `AdjustmentForm`
+(defer/advance/cancel a planned inspection), `ExecutionOutcomeForm` (execution status options read
+live from `GET /v1/execution/contract`, never hardcoded), `ResolutionForm` (acknowledge/refer to
+override/refer to adjustment/escalate). A new "Decision history" section per establishment merges
+committed and still-pending entries across all four contracts. A real, product-relevant bug was
+found and fixed in the process: a background refetch (e.g. `useDefaultScope` filling in
+`schedule_config_id` slightly after the establishment record itself had already loaded) cycled the
+page's main query back through `'loading'`, which unmounted the entire journey — including
+whatever action form a person had open — discarding their in-progress input. Fixed with a
+stale-while-revalidate pattern (the journey renders from the last successful payload, updated
+during render rather than in an effect, never from the query's live status) rather than a
+component-boundary workaround, since the same class of bug existed identically for the review-case
+lookup.
+
+**Terminology correction.** "Recommended for inspection" is now "Selected for this plan," with an
+explicit hint that a different capacity or plan could place the same establishment on either side
+of the cutoff with nothing about it different. The raw calibrated score is no longer the primary
+number shown on list pages — it reads as a probability or a fixed threshold, which the policy
+contract makes no claim to be — replaced by `relativePriorityLabel` (rank + percentile from
+`model_rank`/`n_universe`, both already computed pre-cutoff by Component 13, so the position is
+stable regardless of today's capacity). A single, once-per-page "How to use this priority" note
+states the project's own measured ROC-AUC (~0.61-0.62) rather than hiding or overselling it. Human
+Review is now two sections — Decision Review and Missing Outcomes — using the new `trigger`
+filter; Overview's single "Needs human review" count is now two counts, so a 100%-execution-gap
+result (measured: 28 of 28 in the current production scope) can never again read as "28 suspicious
+decisions." A capacity-honesty note (`capacityHonestyNote`, sourced from the scheduling manifest's
+real `capacity_mode`) states plainly that the default `observed_calendar` mode's daily capacity is
+a historical inspection count, not a live staffing feed.
+
+Frontend test suite: 47 → **64 passing**, including regression tests for the remount bug, the
+trigger split, and each write form's staged-not-applied confirmation. `npm run typecheck` and
+`npm run lint` clean. Manually verified against the real production API and artifacts (not just
+mocks): staged a real override, confirmed it appeared via `/v1/staged-requests`, then removed it
+from `data/staging/` so no test data was left in the repository; confirmed the real trigger split
+(2 decision concerns vs 28 missing outcomes, for the default scope) and the real `n_universe`
+(1,638) behind the percentile display.
+
+No route optimization, inspector assignment, authentication, or live staffing integration was
+added — none of those exist on the backend to build against, and none is implied by anything new
+here.
+
+See `frontend/README.md` for run instructions and the full list of what was deliberately left out.
+
+### Component 21 completion pass — operational priority and plan approval (2026-09-04)
+
+Closed out Component 21's two remaining requirements from the original spec: a supervisor's
+ability to adjust field-work order without touching Sentinel's own risk rank, and an explicit
+plan-approval act that produces an immutable, authoritative artifact for Component 22.
+
+**Backend.** New `PlanDecisionAction.ADJUST_OPERATIONAL_PRIORITY` (4th decision verb, requiring
+`revised_operational_priority`); a new `operational_priority` column on `supervisor_plan_review`,
+computed as `coalesce(supervisor_revised_operational_priority, policy_rank)` — verified end to end
+against real data that `rank`/`policy_rank` stay byte-identical while `operational_priority`
+reflects the override. New `PlanApprovalStatus.APPROVED`, reachable from any decision-coverage
+state, derived from whether a committed `approved_operational_plan` artifact exists for the
+`planning_date` (not from decision coverage — a plan need not be fully decided to be approved).
+New `src/sentinel/plan_review/approval.py` (5-point readiness checklist: no duplicate
+establishments, every row carries the machine recommendation, geographic provenance present,
+every recorded decision has a reason, undecided rows default to the machine recommendation —
+advisory only) and `build_approved_plan()` in `build.py`, writing an immutable, timestamped
+`approved_operational_plan_<planning_date>_<stamp>.parquet` + manifest. New CLI command
+`sentinel approve-plan`. New API: `GET /v1/plan-review/approval`, `POST /v1/plan-review/approve`
+(staged-only, ADR 0049, committed only by `sentinel approve-plan`).
+
+Two real bugs were found and fixed while wiring the API path against real data (not caught by
+unit tests written in isolation, only by an end-to-end smoke test): (1)
+`PLAN_APPROVAL_REQUIRED_FIELDS` and its `_guard_registry()` check both referenced
+`source_plan_review_sha256`, a field that exists on `ApprovedPlanManifest` (computed
+independently from the real file at commit time) but never on `PlanApprovalRequest` (the
+supervisor's own minimal input) — every approval request was refused with a "blank field" error
+regardless of payload. (2) `StagingService._KIND_CONFIG` had no `"plan_approval"` entry, so a
+valid request that passed schema and governance validation still crashed with `KeyError` inside
+the staging append itself. Both are covered by new regression tests
+(`tests/api/test_plan_review_approval_api.py`) so this class of "the contract compiles but the
+whole path 500s" bug cannot silently reappear.
+
+**Frontend.** `PlanDecisionForm` gained the `adjust_operational_priority` action and its required
+revised-order input. New `PlanApprovalPanel` component: shows a readiness-aware "Approve plan"
+action when unapproved, or the committed approval's identity and final counts (active/deferred/
+not-proceeding/undecided) once approved — reading `GET /v1/plan-review/approval`, never
+recomputing readiness client-side. `SupervisorPlanReviewPage` now shows `operational_priority`
+beside `policy_rank` whenever they differ, with an explicit note that the machine rank is
+unchanged. `PlanRowOut`/`PlanDecisionIn` types, `planReview.ts` API client, and `copy.ts` extended
+to match. New `SupervisorPlanReviewPage.test.tsx` (4 tests) plus new plan-review mock
+fixtures/handlers (none existed before this pass). Frontend suite: 63 → **67 passing**; `tsc
+--noEmit` and `oxlint` both clean.
+
+Verified against real committed data end to end: built a fresh 30-establishment plan review,
+applied a 3-action demo decisions file (keep, defer with reason, adjust-priority with reason),
+approved it (30 total, 29 active, 1 deferred, 27 undecided, all readiness checks READY), confirmed
+the blocked path (mismatched `planning_date` refused with a clear error) and determinism
+(repeated approvals of identical input produce byte-identical content outside the intentionally
+non-deterministic approval identity fields). Full backend regression suite re-run after all
+changes; see the top of this file for the current pass count.
+
+### Final completion pass — product coherence, navigation, and honesty audit (2026-09-05)
+
+A dedicated end-to-end audit and fix pass, distinct from any single component: the goal was
+making the already-correct C17→C18→C19→C20→C21 pipeline feel like one coherent product for a real
+food-inspection user rather than a set of separately-built pages, without touching any backend
+business logic. Two research passes (frontend page/copy survey, backend/docs API survey) found the
+pipeline itself sound — no contract-level defects — but found the two newest, most operationally
+real pages (`GeographicPlanPage`, `SupervisorPlanReviewPage`) structurally orphaned: unreachable
+from `OverviewPage`/`TodayPage`/`EstablishmentDetailPage`, with no "which plan am I looking at"
+context, and several raw technical identifiers leaking into primary (non-collapsed) UI.
+
+**Navigation.** `NavBar` reordered into three visually-grouped sections (landing → live
+operational plan → historical analysis) rather than one flat list. `OverviewPage` gained an
+unconditional "Today's field plan" section linking to Field Plan and Plan Review — previously
+every link on that page pointed only at the backtest-era pages. `WorkflowDiagram` (shown on
+Overview) extended from 5 steps to 8, adding the operational-candidate, scoring, capacity-
+selection, geographic-organization, and supervisor-review/approval steps it previously omitted
+entirely. `GeographicPlanPage`/`SupervisorPlanReviewPage` both gained a plain "Field plan for
+{date}"/"Plan for {date}" header, using `planning_date` their own API responses already return —
+no new backend call. `EstablishmentDetailPage` gained a 7th journey step ("Current field plan")
+linking generically into both live-plan pages, since no existing API resolves establishment_id →
+target_inspection_id for a true deep link (a genuine, explicitly out-of-scope gap for a future
+pass, not silently worked around).
+
+**Raw-ID leaks fixed (7 locations).** `EstablishmentDetailPage`'s subtitle no longer shows the raw
+`establishmentId` unconditionally (moved into its existing Technical Details, address stays
+primary). New `lib/copy.ts::apiErrorCodeLabel()` translates every `ApiError` subclass's code
+(`artifact_not_found`, `row_not_found`, `validation_refused`, `duplicate_key`,
+`unknown_component`) into plain language; `ErrorState` now shows that as primary text with the raw
+code de-emphasized alongside it, not dropped. `ResolutionForm`'s always-visible hint no longer
+names a raw `review_id`. New `lib/copy.ts::workBlockDisplayLabel()` replaces a raw `work_block_id`
+fallback heading with "Work block N" wherever Component 20 has no label.
+`GeographicPlanPage`'s empty state no longer names a raw CLI command (`sentinel
+organize-geography`); `PlanApprovalPanel`'s hint no longer names `sentinel approve-plan` directly
+in primary text (moved into a nested Technical Details).
+
+**Backend: one small, additive, read-only change.** `operational_selection`'s own manifest already
+computes `ranked_candidate_count`/`selectable_candidate_count`/`selected_count` (and three more
+counts) — it was simply never reachable through any API route (`meta_service._COMPONENTS`
+whitelisted only `policy`/`scheduling`/`explanations`/`review`). Added one dict entry:
+`"operational_selection": ("operational_selection_processed_dir", "operational_selection")` —
+confirmed against real committed data: `GET /v1/manifests/operational_selection` returns
+`ranked_candidate_count=35859, selectable_candidate_count=35859, selected_count=30` for the
+2026-08-28 planning date, matching the manifest on disk exactly. No new computation anywhere;
+purely a whitelist addition, identical mechanism to the four pre-existing entries. New
+`lib/copy.ts::operationalCoverageNote()` turns those three counts into a plain sentence on
+`SupervisorPlanReviewPage`, honestly worded ("The rest are not flagged as lower risk — they simply
+did not fit in this plan"), never implying anyone not selected is safe.
+
+**Documentation.** `frontend/README.md` was stale — it still called Component 21 an "unbuilt...
+Frontend demo roadmap row," contradicting the root `README.md`/`HANDOFF.md`, and never mentioned
+`SupervisorPlanReviewPage`/`GeographicPlanPage` or their two write actions at all. Rewritten to
+match reality, including the two new staged-write contracts (`plan_decision`, `plan_approval`) in
+the same inventory as the four backtest-side forms. `docs/data_contracts/candidates.md` /
+`operational_scoring.md` / `operational_selection.md` remain genuinely absent (every other
+implemented component has one) — deliberately deferred rather than rushed, noted honestly above in
+the roadmap table rather than left silently unstated.
+
+**Testing.** Two pages had literally zero test coverage before this pass and their MSW mock
+handlers didn't exist yet either (`/v1/schedule/dates`, `/v1/plan-review/work-blocks`) — both
+added along with new fixtures. New: `TodayPage.test.tsx` (3), `GeographicPlanPage.test.tsx` (5),
+`ErrorState.test.tsx` (3), `NavBar.test.tsx` (2), `lib/copy.test.ts` (5). Extended:
+`SupervisorPlanReviewPage.test.tsx` (4→7), `OverviewPage.test.tsx` (+2). Frontend suite: **67 →
+89 passing** (16 test files, up from 11); `tsc --noEmit` and `oxlint` both clean throughout.
+Backend: 2 new tests in `tests/api/test_manifests_runs.py`; full suite **3,384 passed, 3
+deselected** (up from 3,382), `ruff check`/`mypy` clean on every touched file.
+
+Verified against real committed data end to end, via the actual running API
+(`create_app()` + `dependency_overrides[get_settings]`, not mocks): fetched Component 20's 22 real
+work blocks, Component 21's real plan summary (30 selected, already approved from earlier
+verification), the new operational-selection coverage manifest (35,859 ranked → 30 selected,
+exactly matching what now renders in the UI), and staged one fresh plan decision successfully.
+All staged-write test artifacts created during this pass (and two leftover from earlier sessions'
+manual testing) were removed from `data/staging/plan_review/` afterward — nothing was ever
+applied/committed (ADR 0049), so removing them changes no real artifact.
+
+No auth, live staffing/traffic, route optimization, or Component 22 (execution/outcome recording
+for the operational side) was added or implied — all explicitly out of scope for this pass, per
+the same boundaries every prior component has held.
+
+### The "Today = April 1, 2026" bug — root cause, fix, and real data generation (2026-09-05)
+
+A real product-correctness bug, distinct from the completion pass above: the landing page
+(`TodayPage.tsx`, route `/`) was, despite its name, entirely wired to **Side A** — the historical
+backtest/evaluation pipeline (Components 1-14, 16), scoped by `(policy_id, fold_set, fold_id,
+k_name, schedule_config_id)` — never to **Side B**, the live `planning_date`-scoped operational
+pipeline (Components 17-21). Root cause, traced exactly: `useDefaultScope` auto-selects the *last*
+fold in the hardcoded `FOLD_TABLE` (`frontend/src/api/folds.ts`) — `quarterly-2026Q2`, a simulated
+Apr-Jun 2026 test window — and `TodayPage` then called Component 14's fold-scoped
+`listScheduleDates` and took the *first* date in that fold's simulated calendar: April 1, 2026.
+"Today" had never once been connected to a real current date anywhere in the frontend or backend
+— no such abstraction existed at all.
+
+**Fix, two parts, both required.** (1) `TodayPage.tsx` was rebuilt from scratch to read Side B
+instead: it now calls the same no-scope `getPlanSummary`/`listPlanRows` (`frontend/src/api/planReview.ts`)
+`GeographicPlanPage`/`SupervisorPlanReviewPage` already use, and a new `frontend/src/lib/today.ts`
+(`currentOperationalDate()`, computed live from `new Date()`, never a hardcoded literal) lets it
+honestly compare the plan's own `planning_date` against the real current date — `lib/copy.ts::planLabelForToday`
+says plainly "Today's inspection plan" when they match, or "Plan for {date} — not today's plan
+yet" when they don't, never silently relabeling a stale plan. (2) The genuinely honest way to make
+"today" show real, current data — rather than a UI trick over stale data — was to actually run the
+real CLI pipeline once for `planning_date=2026-09-04` (the real current date in this environment):
+`plan-candidates` → `score-candidates` → `select-inspections --capacity 30 --policy pure_risk` →
+`organize-geography` → `review-plan` → `approve-plan`, producing new, real, immutable artifacts
+(35,859 real candidates, 30 selected, 21 real geographic work areas, approved) using the same real
+Chicago data and the same frozen production model as every other run — no fabrication anywhere.
+The prior `2026-08-28` artifacts are untouched on disk (12 files, immutable) and remain reachable
+by anyone querying that specific date directly; they are simply no longer what "latest" resolves
+to.
+
+The old fold/day-selector view (real, valid Side-A analysis) was not deleted — it moved verbatim to
+a new route `/schedule/day` (`frontend/src/pages/ScheduleDayPage.tsx`), explicitly labeled
+"Historical Day View," reachable via a new link on `SchedulePage`. `NavBar`'s `/plan` label
+changed from the ambiguous "Plan Summary" to "Backtest Summary," since it's `OverviewPage`'s
+fold-scoped historical summary, not Side B's operational one. Three smaller, explicitly-requested
+UX fixes rode along: `Area N` → `Work Area N` display labels (new `copy.ts::workAreaLabel`,
+client-side only — Component 20's own raw label is unchanged); `SupervisorPlanReviewPage`'s
+undecided-row text is now context-aware ("No decision recorded yet" pre-approval vs. "No decision
+was recorded before this plan was approved" post-approval); and the ROC-AUC disclosure
+(`HOW_TO_USE_PRIORITY`) on `RecommendationsPage`/`EstablishmentDetailPage`, previously always-visible,
+is now collapsed behind "How Sentinel prioritizes locations," matching the rest of the app's
+progressive-disclosure convention.
+
+**Explicitly not built, on purpose:** no "generate today's plan" button or endpoint (builds stay a
+CLI/operator action, ADR 0049 — the frontend only ever reads and honestly labels the latest built
+artifact); no operational-`planning_date` picker or prev/next-day control for Side B (it never had
+one; adding it is a materially larger change not required to fix this bug — "today always means
+the latest Side-B artifact, labeled honestly" is sufficient and matches Side B's existing no-scope
+convention).
+
+New tests: `frontend/src/lib/today.test.ts` (6), `TodayPage.test.tsx` fully rewritten (6),
+`ScheduleDayPage.test.tsx` (new, 4, the old `TodayPage.test.tsx` content moved verbatim),
+`copy.test.ts` (+9: `planLabelForToday`, `planStalenessNote`, `workAreaLabel`), plus updates to
+`NavBar.test.tsx`, `SchedulePage.test.tsx`, `GeographicPlanPage.test.tsx`,
+`SupervisorPlanReviewPage.test.tsx`, `RecommendationsPage.test.tsx`, `EstablishmentDetailPage.test.tsx`
+for the label/wording changes. Frontend suite: 89 → **110 passing** (17 → 18 files). `tsc --noEmit`
+and `oxlint` clean. No backend code changed — verified via the real running API that
+`GET /v1/plan-review/summary`, `/work-blocks`, and `/rows` all now agree on `planning_date=2026-09-04`
+(30 selected, 22 work blocks, approved), exactly what Today/Field Plan/Plan Review each read.
+
+### Fixed broken establishment navigation from the live plan (2026-09-05)
+
+A second real bug, found immediately after the date fix above and caused by the exact same class
+of Side A/Side B conflation: clicking an establishment from `TodayPage`/`GeographicPlanPage`
+(both Side B) led to "We couldn't find that record." Root cause, confirmed by reading
+`src/sentinel/api/services/establishment_service.py::get_establishment_history` directly: both
+pages linked into `EstablishmentDetailPage.tsx` (route `/establishments/:establishmentId`),
+whose backend call, `GET /v1/establishments/{id}`, filters **Component 13's fold-scoped**
+`inspection_recommendations` table — a historical population entirely different from "every real
+establishment Sentinel knows about." Whether a given establishment appeared there depended on
+whether it happened to be scored for whatever historical fold `useDefaultScope` auto-selected, a
+condition with no relationship to the live operational plan at all.
+
+Fixed with a new, genuinely Side-B-scoped page, **`frontend/src/pages/EstablishmentPlanDetailPage.tsx`**
+at route `/plan/establishments/:targetInspectionId`, built entirely from an already-existing,
+already-tested endpoint that the frontend had never called: `GET /v1/plan-review/rows/{target_inspection_id}`
+(Component 21's own single-row lookup). No new backend code. Shows Sentinel priority (worded
+honestly as `#{rank} in today's plan` — real data confirmed `PlanRowOut.rank`/`.policy_rank` are
+identical, 1..30, i.e. rank *within the plan*, not the 35,859-candidate universe; reusing Side-A's
+`relativePriorityLabel` here would have silently misrepresented the number), why it's prioritized,
+current-plan/work-area status, and the existing `PlanDecisionForm` reused unmodified — machine
+recommendation and supervisor decision rendered as visibly separate, never merged. States plainly,
+in a collapsed "More inspection history" section, that deeper historical feature detail and SHAP
+explanations aren't available for live operational establishments today (Component 18 doesn't run
+explainability) — an honest limitation, not a silently missing field. `GeographicPlanPage.tsx`,
+`TodayPage.tsx` (the two broken call sites, grep-confirmed to be the complete list), and
+`SupervisorPlanReviewPage.tsx` (added a link from the existing inline-expand row for consistency)
+now all route through it.
+
+Verified against real data, across multiple establishments, not just one: fetched real rows from
+the current plan and confirmed `GET /v1/plan-review/rows/{id}` returns `200` for the first-ranked,
+last-ranked, middle-ranked, a grouped, a singleton-group, and a missing-location establishment —
+six distinct real records, all resolving correctly (no establishment in the current committed plan
+yet carries a supervisor decision to include as a seventh real category; that path is covered by a
+mocked-fixture test instead, reported honestly rather than claimed as real-data-verified).
+
+New tests: `EstablishmentPlanDetailPage.test.tsx` (5, new), plus navigation-destination assertions
+added to `TodayPage.test.tsx`, `GeographicPlanPage.test.tsx`, and `SupervisorPlanReviewPage.test.tsx`.
+Frontend suite: 110 → **118 passing** (19 files). `tsc --noEmit`/`oxlint` clean. No backend files
+touched; full backend regression suite re-run to confirm.
+
+### Final acceptance audit (2026-09-05)
+
+A strict, no-new-features audit against the full C17-21 pipeline and its frontend, using real
+data end to end. Found and fixed two more genuine gaps beyond what prior passes covered, both
+root-caused rather than patched:
+
+**"Needs Attention" was a single merged list, not two separate sections.** `HumanReviewPage.tsx`
+computed both trigger reasons (`policy_warning_present`, `no_execution_record_on_scheduled_row`)
+into one de-duplicated list with an inline per-row tag distinguishing them — real separation, but
+weaker than the "visually and semantically separate" bar the product requires, since a case with
+both reasons showed them concatenated in one line. Restructured into two headed `<section>`s
+("Decision review (N)" / "Missing outcomes (N)"), each with its own count, its own empty state,
+and its own honesty statement ("this is not evidence Sentinel decided wrong" /
+"a record-keeping gap, not evidence anything went wrong") — a case needing both now genuinely
+appears in both sections rather than being merged into one ambiguous line.
+
+**A decision recorded after approval gave no warning that it wouldn't retroactively change the
+approved plan.** `PlanDecisionForm` (shared by `SupervisorPlanReviewPage` and the new
+`EstablishmentPlanDetailPage`) gained an optional `planAlreadyApproved` prop; when true, both the
+closed and open states of the form now state plainly that a new decision "will not change the
+approved plan -- it will be included the next time this plan is reviewed and re-approved." Backend
+semantics were already correct and already documented (approval immutability was never meant to
+block further decisions, only to protect the already-written artifact) — this closes the gap
+between that documented intent and what the UI actually communicated. `EstablishmentPlanDetailPage`
+also gained its own `getPlanSummary` read so it states the same plan-level approval status
+Today/Plan Review show, closing a real cross-page consistency gap (the establishment-level page
+previously said nothing about plan-level approval at all).
+
+**A genuine, previously-uncaught pre-existing code-quality gap, found only because this audit ran
+`ruff format`/`ruff check`/`mypy` over the whole `src/sentinel/` tree rather than only
+touched files**: `src/sentinel/geographic_organization/organization.py` had a real (if ultimately
+behavior-preserving, confirmed by re-running its 20-test suite) closure-over-loop-variable pattern
+flagged by `ruff`'s B023 rule, plus two files with missing generic type arguments and one
+`object`-typed index access mypy had never been run against directly. Fixed with the standard
+default-argument closure-binding idiom (no behavior change — the closure was already used
+synchronously within the same loop iteration it was defined in, so this was a static-analysis
+false positive, not a live bug, verified by tracing the control flow) and precise `dict[str, Any]`
+/`cast` annotations. 20 of the 25 unformatted files (across Components 17-21 plus two API files)
+were re-formatted to close a formatting-drift gap that had grown silently across this session's many
+edits (the 5 Component-9 calibration files remain deliberately unformatted, per the pre-existing,
+documented decision in this file). `ruff check`/`ruff format --check`/`mypy` on `src/sentinel/` are
+now clean except that one pre-existing exception and the unrelated `entity_service.py` E501.
+
+**Verified end to end with a real decision + re-approval cycle**, not just reads: staged and
+committed a real `adjust_operational_priority` decision via `sentinel review-plan --decisions`
+against the live 2026-09-04 plan, confirmed `rank`/`policy_rank` stayed byte-identical (6/6) while
+`operational_priority` changed to 1 and a full audit record appeared in `plan_decision_log`
+(actor, reason, timestamp, outcome=applied), then re-ran `sentinel approve-plan` and confirmed the
+new state (`decisions_recorded: 1`, `approval_status: approved`, `final_undecided_count: 29`)
+is what every Side-B API endpoint — and therefore every Side-B page — now agrees on. Re-verified
+establishment navigation across 7 categories (first/middle/last-ranked, grouped, singleton-group,
+missing-location, and now a real decision-bearing establishment) — all `200`.
+
+Frontend: 118 → **120 passing**. `tsc --noEmit`/`oxlint` clean. Backend: full suite unaffected in
+count (**3,384 passed, 3 deselected**, re-run twice to confirm, once before and once after the
+`geographic_organization` fixes), `ruff check`/`ruff format --check`/`mypy` now clean on every file
+this session touched. No staged test artifacts left behind (this pass used the real CLI directly,
+never the staging store, so there was nothing to clean up).

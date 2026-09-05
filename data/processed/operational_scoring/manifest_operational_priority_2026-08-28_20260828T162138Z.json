@@ -1,0 +1,150 @@
+{
+  "artifacts": [
+    {
+      "bytes": 2109298,
+      "path": "operational_priority_2026-08-28_20260828T162138Z.parquet",
+      "row_count": 35859,
+      "schema": {
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "candidate_definition_version": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "feature_definition_version": "String",
+        "has_location": "Boolean",
+        "n_prior_records": "Int64",
+        "operational_scoring_definition_version": "String",
+        "planning_date": "String",
+        "rank": "Int64",
+        "scoring_status": "String",
+        "secondary_no_history": "Boolean",
+        "target_inspection_id": "String"
+      },
+      "sha256": "86f8bfb4352dee9a0ecd01a1a2f16c635c210a2c95596c2f3bdb32e65fcc980a"
+    }
+  ],
+  "base_model_name": "xgboost",
+  "built_at": "2026-08-28T16:21:38.204897+00:00",
+  "calibrated_predictions_path": "calibrated_predictions_20260824T163608Z.parquet",
+  "calibrated_predictions_sha256": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+  "calibration_fold_id": "quarterly-2026Q2",
+  "calibration_fold_set": "quarterly",
+  "calibration_method": "platt",
+  "calibration_source": "sentinel.calibration persisted parameters (calibrator_parameters_*.parquet / calibrator_isotonic_breakpoints_*.parquet), loaded by operational_scoring.calibrator.load_frozen_calibrator -- the calibrator is never refit, only reloaded from Component 9's own frozen artifact",
+  "calibrator_fit_end": "2026-03-31",
+  "calibrator_fit_start": "2026-01-01",
+  "calibrator_isotonic_breakpoints_path": "calibrator_isotonic_breakpoints_20260824T163608Z.parquet",
+  "calibrator_isotonic_breakpoints_sha256": "8d0e3639a9a5065c039551e90e54c1e9c30f89468df4429c68af1fee42042c22",
+  "calibrator_parameters_path": "calibrator_parameters_20260824T163608Z.parquet",
+  "calibrator_parameters_sha256": "37db51815132a0796e6e8a36459b2ae55f7a69cd7366cf489e517cb400453525",
+  "candidate_count": 35859,
+  "candidate_definition_version": "v1",
+  "candidates_path": "operational_candidates_2026-08-28_20260828T151027Z.parquet",
+  "candidates_sha256": "d0ac0348a750485ae59eec1fcaba8edc33fe065b965edcdaf9946037ce55a9ac",
+  "checks": [
+    {
+      "detail": "all 26 declared feature columns present",
+      "name": "feature_contract_columns_present",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 of 35859 candidate(s) violate a never-null feature rule and were excluded from scoring rather than passed to the model",
+      "name": "no_never_null_violations",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "train_end 2026-08-14 < planning_date 2026-08-28",
+      "name": "operational_fold_matches_planning_date",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 training-window row(s) dated after the operational train_end (2026-08-14)",
+      "name": "no_training_row_on_or_after_planning_date",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "scored candidate identifiers match the input set exactly",
+      "name": "scored_ids_equal_candidate_ids",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 calibrated score(s) outside [0, 1]",
+      "name": "calibrated_scores_within_zero_and_one",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "ranks 1..35859 assigned exactly once each",
+      "name": "rank_is_a_dense_permutation",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "operational_scoring",
+  "composite_model_name": "xgboost_platt",
+  "coverage_eligible_count": 17060,
+  "excluded_count": 0,
+  "feature_definition_version": "v1",
+  "historical_features_path": "as_of_features_20260816T150313Z.parquet",
+  "historical_features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "hyperparameter_fold_set": "quarterly",
+  "hyperparameter_source": "sentinel.boosting.definitions.TUNED_PARAMS['xgboost']['quarterly'] -- Component 7's frozen Optuna search result for fold set 'quarterly' (ADR 0017), reused because no separate operational tuning study exists",
+  "hyperparameter_values": {
+    "colsample_bytree": "0.668974715332733",
+    "eval_metric": "aucpr",
+    "learning_rate": "0.1926324953901243",
+    "max_depth": "4",
+    "min_child_weight": "12.607179102564166",
+    "missing": "nan",
+    "n_estimators": "103",
+    "n_jobs": "1",
+    "objective": "binary:logistic",
+    "random_state": "42",
+    "reg_alpha": "1.0910568566546592e-08",
+    "reg_lambda": "0.005889806219464979",
+    "subsample": "0.7877818882255597",
+    "tree_method": "hist"
+  },
+  "metrics_path": "evaluation_metrics_20260824T160045Z.parquet",
+  "metrics_sha256": "98429dd1a8821e0a452084f24c4e6f8d6650cce0a796a1212b75edc72ba2b848",
+  "model_family": "boosted",
+  "model_selection_decided_on_axis": "ece",
+  "model_selection_n_tied_on_nde": 4,
+  "model_selection_source": "sentinel.policy.select.select() -- Component 13's frozen, pre-registered model-selection rule, applied unmodified to the same Component 5/9 artifacts sentinel decide reads",
+  "operational_fold_id": "operational-2026-08-28",
+  "operational_fold_set": "operational",
+  "operational_scoring_definition_version": "v1",
+  "planning_date": "2026-08-28",
+  "score_direction": "descending: higher score = higher predicted violation risk (sentinel.evaluation.models.SCORE_DIRECTION)",
+  "scored_count": 35859,
+  "sensitivity_path": "sensitivity_20260824T160045Z.parquet",
+  "sensitivity_sha256": "db15bbf290c8520beeb17da108113babfe778957b4d30be5f0a50c7da4172500",
+  "simulation_path": "simulation_summary_20260824T160045Z.parquet",
+  "simulation_sha256": "6440ce776dce432e6fc19fb20643d47974edc94e0b486ebbc1f4da49a38d1d7b",
+  "tie_break_column": "target_inspection_id",
+  "train_end": "2026-08-14",
+  "train_positive_rate": 0.525161536196234,
+  "train_rows": 57727,
+  "train_start": "2018-07-01",
+  "training_window_rule": "see operational_scoring.definitions.OPERATIONAL_TRAINING_WINDOW_RULE",
+  "warnings": [
+    "architectural_provenance: operational inference reuses the frozen 'quarterly' tuning configuration because no separately tuned operational fold set exists (see hyperparameter_source). This is an intentional architectural choice, not a data-quality anomaly."
+  ]
+}

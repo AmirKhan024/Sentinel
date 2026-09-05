@@ -448,3 +448,190 @@ def test_build_features_reports_when_no_upstream_files_exist(
 ) -> None:
     monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
     assert main(["build-features"]) == 1
+
+
+# --- evaluate subcommand ----------------------------------------------------
+
+
+def test_evaluate_parses_with_no_flags() -> None:
+    args = parse(["evaluate"])
+    assert args.command == "evaluate"  # type: ignore[attr-defined]
+    assert args.features is None  # type: ignore[attr-defined]
+    assert args.folds_only is False  # type: ignore[attr-defined]
+
+
+def test_evaluate_accepts_its_input_and_output_overrides() -> None:
+    args = parse(["evaluate", "--features", "f.parquet", "--output-dir", "out"])
+    assert args.features == Path("f.parquet")  # type: ignore[attr-defined]
+    assert args.output_dir == Path("out")  # type: ignore[attr-defined]
+
+
+def test_evaluate_accepts_dry_run_report_and_folds_only() -> None:
+    args = parse(["evaluate", "--dry-run", "--report", "--folds-only"])
+    assert args.dry_run is True  # type: ignore[attr-defined]
+    assert args.report is True  # type: ignore[attr-defined]
+    assert args.folds_only is True  # type: ignore[attr-defined]
+
+
+def test_evaluate_seed_and_replication_counts_default_to_the_declared_values() -> None:
+    from sentinel.evaluation.sensitivity import DEFAULT_REPLICATIONS
+    from sentinel.evaluation.simulate import DEFAULT_RANDOM_REPLICATIONS
+
+    args = parse(["evaluate"])
+    assert args.seeds == DEFAULT_RANDOM_REPLICATIONS  # type: ignore[attr-defined]
+    assert args.sensitivity_replications == DEFAULT_REPLICATIONS  # type: ignore[attr-defined]
+
+
+def test_evaluate_log_level_works_on_either_side_of_the_subcommand() -> None:
+    before = parse(["--log-level", "DEBUG", "evaluate"])
+    after = parse(["evaluate", "--log-level", "DEBUG"])
+    assert before.log_level == "DEBUG"  # type: ignore[attr-defined]
+    assert after.log_level == "DEBUG"  # type: ignore[attr-defined]
+
+
+def _tiny_evaluation_input(tmp_path: Path) -> Path:
+    from tests.conftest import spanning_features
+
+    path = tmp_path / "as_of_features_20260816T150313Z.parquet"
+    spanning_features(days=1800, per_day=2).write_parquet(path)
+    return path
+
+
+def test_evaluate_writes_and_exits_zero(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    features = _tiny_evaluation_input(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "evaluation"
+    code = main(
+        [
+            "evaluate",
+            "--features",
+            str(features),
+            "--output-dir",
+            str(out),
+            "--seeds",
+            "2",
+            "--sensitivity-replications",
+            "3",
+        ]
+    )
+    assert code == 0
+    assert list(out.glob("evaluation_folds_*.parquet"))
+    assert list(out.glob("evaluation_metrics_*.parquet"))
+    assert list(out.glob("discovery_curves_*.parquet"))
+    assert list(out.glob("simulation_summary_*.parquet"))
+    assert list(out.glob("manifest_evaluation_folds_*.json"))
+
+
+def test_evaluate_dry_run_writes_nothing(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    features = _tiny_evaluation_input(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "evaluation"
+    code = main(
+        [
+            "evaluate",
+            "--features",
+            str(features),
+            "--output-dir",
+            str(out),
+            "--dry-run",
+            "--seeds",
+            "2",
+            "--sensitivity-replications",
+            "3",
+        ]
+    )
+    assert code == 0
+    assert not out.exists()
+
+
+def test_evaluate_folds_only_is_fast_and_still_writes_the_split(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    features = _tiny_evaluation_input(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+
+    out = tmp_path / "evaluation"
+    assert (
+        main(["evaluate", "--features", str(features), "--output-dir", str(out), "--folds-only"])
+        == 0
+    )
+    import polars as pl
+
+    (folds_file,) = list(out.glob("evaluation_folds_*.parquet"))
+    (metrics_file,) = list(out.glob("evaluation_metrics_*.parquet"))
+    assert pl.read_parquet(folds_file).height > 0
+    assert pl.read_parquet(metrics_file).height == 0
+
+
+def test_evaluate_reports_a_missing_input_without_a_traceback(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert main(["evaluate", "--features", str(tmp_path / "absent.parquet")]) == 1
+
+
+def test_evaluate_reports_when_no_feature_table_exists(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert main(["evaluate"]) == 1
+
+
+def test_evaluate_refuses_a_non_positive_seed_count(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    features = _tiny_evaluation_input(tmp_path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    with pytest.raises(SystemExit):
+        main(["evaluate", "--features", str(features), "--seeds", "0"])
+
+
+def test_evaluate_refuses_a_snapshot_too_short_to_fold(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Folds are never fabricated to fill a report."""
+    from tests.conftest import spanning_features
+
+    path = tmp_path / "as_of_features_short.parquet"
+    spanning_features(days=200).write_parquet(path)
+    monkeypatch.setattr("sentinel.cli.load_settings", lambda: settings)
+    assert main(["evaluate", "--features", str(path)]) == 1
+
+
+# --- serve -------------------------------------------------------------------
+
+
+def test_serve_parses_with_no_flags() -> None:
+    args = parse(["serve"])
+    assert args.command == "serve"  # type: ignore[attr-defined]
+    assert args.host is None  # type: ignore[attr-defined]
+    assert args.port is None  # type: ignore[attr-defined]
+    assert args.reload is False  # type: ignore[attr-defined]
+
+
+def test_serve_accepts_host_port_and_reload() -> None:
+    args = parse(["serve", "--host", "0.0.0.0", "--port", "9000", "--reload"])
+    assert args.host == "0.0.0.0"  # type: ignore[attr-defined]
+    assert args.port == 9000  # type: ignore[attr-defined]
+    assert args.reload is True  # type: ignore[attr-defined]
+
+
+def test_run_serve_binds_using_settings_defaults_when_unset(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`_run_serve` never starts a real server here -- `uvicorn.run` is replaced with a spy."""
+    from sentinel.cli import _run_serve
+
+    calls: list[dict[str, object]] = []
+    monkeypatch.setattr("uvicorn.run", lambda app, **kwargs: calls.append({"app": app, **kwargs}))
+    args = parse(["serve"])
+    assert _run_serve(args, settings) == 0
+    assert calls[0]["host"] == settings.api_host
+    assert calls[0]["port"] == settings.api_port
+    assert calls[0]["reload"] is False

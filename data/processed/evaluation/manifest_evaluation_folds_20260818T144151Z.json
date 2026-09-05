@@ -1,0 +1,319 @@
+{
+  "artifacts": [
+    {
+      "bytes": 7899,
+      "path": "evaluation_folds_20260818T144151Z.parquet",
+      "row_count": 18,
+      "schema": {
+        "calibration_end": "Date",
+        "calibration_positive_rate": "Float64",
+        "calibration_rows": "Int32",
+        "calibration_start": "Date",
+        "evaluation_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "test_days": "Int32",
+        "test_end": "Date",
+        "test_establishments": "Int32",
+        "test_median_daily_capacity": "Float64",
+        "test_positive_rate": "Float64",
+        "test_rows": "Int32",
+        "test_start": "Date",
+        "train_end": "Date",
+        "train_positive_rate": "Float64",
+        "train_rows": "Int32",
+        "train_start": "Date"
+      },
+      "sha256": "31dc7fac00c050165efa02fc005c73c7392fccaa1c3b5a2265afa3a037b442b7"
+    },
+    {
+      "bytes": 6374,
+      "path": "seasonality_20260818T144151Z.parquet",
+      "row_count": 228,
+      "schema": {
+        "fitted_on": "String",
+        "log_odds_effect": "Float64",
+        "month": "Int32",
+        "pct_point_shift_at_base": "Float64",
+        "raw_rate": "Float64",
+        "rows": "Int32"
+      },
+      "sha256": "55cf54a1c1ae4055301bfbd4fbe8a665c42dab2098c1d28ed433324a39e68d92"
+    },
+    {
+      "bytes": 30979,
+      "path": "evaluation_metrics_20260818T144151Z.parquet",
+      "row_count": 4428,
+      "schema": {
+        "evaluation_definition_version": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k": "Int32",
+        "k_name": "String",
+        "metric": "String",
+        "metric_kind": "String",
+        "model_name": "String",
+        "model_version": "String",
+        "n_test": "Int32",
+        "positive_rate": "Float64",
+        "test_end": "Date",
+        "test_start": "Date",
+        "value": "Float64"
+      },
+      "sha256": "3e4548903e5a04b59b236c295ca90ab95f2246f28bd71e2eb788460fbeaf677c"
+    },
+    {
+      "bytes": 1238200,
+      "path": "discovery_curves_20260818T144151Z.parquet",
+      "row_count": 498648,
+      "schema": {
+        "cumulative_positive": "Int32",
+        "cumulative_positive_fraction": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "model_name": "String",
+        "schedule_name": "String",
+        "seed": "Int32",
+        "slot_fraction": "Float64",
+        "slot_index": "Int32"
+      },
+      "sha256": "f50416e78a239380084a510bd0d93cdac5a6e2fde75ce78dcf9362dc28073fec"
+    },
+    {
+      "bytes": 44509,
+      "path": "simulation_summary_20260818T144151Z.parquet",
+      "row_count": 558,
+      "schema": {
+        "days_earlier_count": "Int32",
+        "discovery_area": "Float64",
+        "first_half_discovery": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "fraction_improved": "Float64",
+        "fraction_improved_all_rows": "Float64",
+        "fraction_unchanged": "Float64",
+        "fraction_worse": "Float64",
+        "max_days_earlier": "Float64",
+        "mean_days_earlier": "Float64",
+        "mean_days_earlier_all_rows": "Float64",
+        "median_daily_capacity": "Float64",
+        "median_days_earlier": "Float64",
+        "min_days_earlier": "Float64",
+        "model_name": "String",
+        "n_positives": "Int32",
+        "n_slots": "Int32",
+        "normalized_discovery_efficiency": "Float64",
+        "p25_days_earlier": "Float64",
+        "p75_days_earlier": "Float64",
+        "schedule_name": "String",
+        "seed": "Int32",
+        "std_days_earlier": "Float64"
+      },
+      "sha256": "9425451a880f71bbc78a40029f398d07be260323da753769b80b5eba27e19655"
+    },
+    {
+      "bytes": 10855,
+      "path": "sensitivity_20260818T144151Z.parquet",
+      "row_count": 108,
+      "schema": {
+        "fold_id": "String",
+        "fold_set": "String",
+        "label_flip_rate": "Float64",
+        "mean": "Float64",
+        "metric": "String",
+        "model_name": "String",
+        "observed": "Float64",
+        "p05": "Float64",
+        "p50": "Float64",
+        "p95": "Float64",
+        "replications": "Int32",
+        "std": "Float64"
+      },
+      "sha256": "c44142555c38870f29ec087b49ed3560f526d8d4192e4ae9edf5e51c465c8a57"
+    }
+  ],
+  "blocked": [
+    "temperature covariate in the time-invariance model: no weather data is ingested (needs NOAA GHCN USW00094846, a Component 1 extension)",
+    "faithful CDPH 2015 replication: 7 of that model's 10 input families (inspector identity, 311, crime, licence, weather, facility type, risk category) are not in the data contract at all, so it is not reachable. Component 6 ships an explicitly labelled approximation instead; see docs/data_contracts/baseline_predictions.md",
+    "duplicate-record sensitivity: Component 1 owns raw treatment and Component 3 already collapses same-day canvasses, so there is no Component 5 knob to vary"
+  ],
+  "built_at": "2026-08-18T14:41:51.140571+00:00",
+  "capacity_semantics": "slots = the observed multiset of inspection dates in the window; every schedule is a permutation over the same slots, so capacity is identical",
+  "checks": [
+    {
+      "detail": "18 folds have strictly ordered train / calibration / test boundaries",
+      "name": "fold_boundaries_are_strict",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every calibration window sits strictly between training and test",
+      "name": "calibration_sits_between",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "test windows are strictly increasing and disjoint within every fold set",
+      "name": "folds_advance_monotonically",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "training is an expanding window anchored at the code-era start",
+      "name": "training_window_expands",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "no training row is dated outside its fold's training window",
+      "name": "future_rows_never_enter_training",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every test row is dated after every training and calibration row in its fold",
+      "name": "test_is_isolated",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "no row belongs to two splits of the same fold",
+      "name": "no_split_overlap",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 18 test windows are fully covered by the snapshot",
+      "name": "test_windows_are_complete",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every schedule uses exactly the observed inspection slots",
+      "name": "capacity_is_conserved",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "the business-as-usual schedule reproduces the observed inspection dates exactly",
+      "name": "business_as_usual_is_real",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "higher score is scheduled first (0.90 ranks ahead of 0.10)",
+      "name": "score_direction_is_descending",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every scored prediction declared a training horizon within its fold",
+      "name": "scores_respect_the_decision_point",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every scored model covered its fold's test window exactly",
+      "name": "predictions_cover_test_exactly",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every fold's row counts reproduce a direct re-count of the feature table",
+      "name": "labels_are_read_not_redefined",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "covid_shift: 1 fold(s), quarterly: 17 fold(s)",
+      "name": "fold_sets",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "test base rate ranges 0.3791 to 0.5127 across folds; every base-rate-dependent metric must be read beside its fold's prevalence",
+      "name": "base_rate_drift",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "median daily inspection capacity ranges 22 to 45 across test windows; k is derived from this, not chosen",
+      "name": "measured_capacity",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "9 score producer(s): business_as_usual, random, days_since_last_canvass, priority_at_last_canvass, prior_canvass_priority_rate, constant, lightgbm, xgboost, xgboost_class_weighted",
+      "name": "models_scored",
+      "passed": "True",
+      "severity": "warn"
+    },
+    {
+      "detail": "3 experiment(s) cannot run on the current data",
+      "name": "blocked_experiments",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "temporal_evaluation",
+  "curve_rows": 498648,
+  "estimand": "Re-ordering of canvass inspections that actually occurred in the test window. Capacity, the establishment set and the labels are all held at their observed values; only the order changes. This is not a causal estimate and says nothing about establishments that were never inspected.",
+  "evaluation_definition_version": "v1",
+  "excluded_partial_windows": [
+    "2026Q3 (snapshot ends 2026-08-14, quarter is incomplete)"
+  ],
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "first_test_start": "2022-04-01",
+  "fold_cadence": "quarterly",
+  "fold_sets": {
+    "covid_shift": 1,
+    "quarterly": 17
+  },
+  "folds": 18,
+  "last_test_end": "2026-06-30",
+  "metric_rows": 4428,
+  "models": [
+    "business_as_usual",
+    "random",
+    "days_since_last_canvass",
+    "priority_at_last_canvass",
+    "prior_canvass_priority_rate",
+    "constant",
+    "lightgbm",
+    "xgboost",
+    "xgboost_class_weighted"
+  ],
+  "predictions_path": "boosted_predictions_20260817T160354Z.parquet",
+  "predictions_sha256": "c8fcbd098f19650bc66434620ef97d2026af60318884d72282ecfa91c6ae66f3",
+  "random_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61
+  ],
+  "score_direction": "descending: higher score = higher predicted violation risk",
+  "sensitivity_replications": 1000,
+  "sensitivity_seed": 20260816,
+  "simulation_rows": 558,
+  "tie_break_column": "target_inspection_id"
+}

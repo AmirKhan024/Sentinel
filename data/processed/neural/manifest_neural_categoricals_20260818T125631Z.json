@@ -1,0 +1,90 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1027200,
+      "path": "neural_categoricals_20260818T125631Z.parquet",
+      "row_count": 57727,
+      "schema": {
+        "chain_key": "String",
+        "community_area": "String",
+        "days_since_source": "Int32",
+        "establishment_id": "String",
+        "facility_type": "String",
+        "inspection_date": "String",
+        "source_inspection_date": "Date",
+        "source_inspection_id": "String",
+        "target_inspection_id": "String",
+        "zip": "String"
+      },
+      "sha256": "4a3dc38659f4c42b5c32ac6840079aa0229c4e8b30fc97cfc100bf1963bf445c"
+    }
+  ],
+  "as_of_rule": "each categorical is the value recorded at the establishment's most recent inspection of ANY type STRICTLY BEFORE the row's own inspection_date. The target row never supplies its own attributes. Rows with no prior inspection get __UNKNOWN__, which is a real category with a learned embedding row.",
+  "assignments_path": "establishment_assignments_20260816T085729Z.parquet",
+  "assignments_sha256": "9b0e6808ebfc35c5f7cce51634e4eb5a4bd4d2821530b3ef391facfdebdb882a",
+  "blocked": [
+    "an establishment_id embedding: refused, not blocked by the data. It is the obvious thing for this component to learn and it is the largest leakage surface in the project -- a per-establishment parameter carries whatever the network learned about that establishment from every row it appeared in. Component 4 excludes identity by design and modeling.definitions.FORBIDDEN_COLUMNS enforces it. `chain` is the deliberate lower-cardinality substitute, derived per fold from training rows only. See ADR 0021",
+    "inspector-effect modelling: the Chicago food inspections dataset publishes 22 columns and none identifies an inspector, so an inspector embedding -- the thing an entity-embedding component would most naturally add -- is undefined. Unchanged from Component 7. See ADR 0019",
+    "probability calibration: neural probabilities are emitted raw and uncorrected. Temperature scaling, Platt scaling, isotonic regression and any operating threshold belong to Component 9",
+    "demographic features: no race, income or ACS variable is used anywhere. Community area is included ONLY as an explicitly labelled experimental embedding with a matched ablation, and a better score with it is not grounds for retaining it. The fairness audit is Component 12's. See ADR 0023",
+    "SHAP or any attribution over the learned representation: Component 11's. The embedding tables emitted here are a representation, not an explanation",
+    "ensembling the network with Components 6 and 7: comes after the individual model stages, so that it is clear which member carries a result"
+  ],
+  "built_at": "2026-08-18T12:56:31.610729+00:00",
+  "cardinality": {
+    "chain_key": 13303,
+    "community_area": 78,
+    "facility_type": 169,
+    "zip": 72
+  },
+  "checks": [
+    {
+      "detail": "one categorical row per feature row (57727)",
+      "name": "categoricals_cover_every_row",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every carried categorical came from an inspection strictly earlier than the row it was carried to",
+      "name": "categoricals_are_strictly_as_of",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every categorical is a real token; absence is UNKNOWN, never null",
+      "name": "categoricals_are_never_null",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "the categorical table carries identity and its four families, and no label or provenance column",
+      "name": "categoricals_carry_no_label",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "neural_categoricals",
+  "coverage": {
+    "chain_key": 0.993054,
+    "community_area": 0.988116,
+    "facility_type": 0.992153,
+    "zip": 0.993054
+  },
+  "experimental_status": "EXPERIMENTAL, Component 8 only. This is NOT a Component 4 feature table and no column here is a feature. feature_definition_version is unchanged at v1 and Component 4's contract was not modified to produce this. Nothing here may be joined onto a feature table for any other component. See ADR 0022.",
+  "families": [
+    "chain_key",
+    "facility_type",
+    "community_area",
+    "zip"
+  ],
+  "feature_definition_version": "v1",
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "neural_definition_version": "v1",
+  "polars_version": "1.43.2",
+  "raw_path": "food_inspections_20260816T070911Z.parquet",
+  "raw_sha256": "7d3c4069340a68d197204c6cca9fca6399c6565bc3668760f145f43cd377ad38",
+  "rows": 57727,
+  "rows_without_prior_inspection": 401
+}

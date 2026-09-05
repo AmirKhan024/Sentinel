@@ -1,0 +1,907 @@
+{
+  "artifacts": [
+    {
+      "bytes": 19608,
+      "path": "geographic_inspection_plan_2026-08-28_20260902T152847Z.parquet",
+      "row_count": 30,
+      "schema": {
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "geographic_algorithm": "String",
+        "geographic_group_id": "String",
+        "geographic_group_label": "String",
+        "geographic_organization_definition_version": "String",
+        "highest_sentinel_rank_in_block": "Int64",
+        "is_selected": "Boolean",
+        "location_status": "String",
+        "n_prior_records": "Int64",
+        "operational_selection_definition_version": "String",
+        "organization_mode": "String",
+        "planning_date": "String",
+        "policy_id": "String",
+        "policy_rank": "Int64",
+        "rank": "Int64",
+        "requested_capacity": "Int64",
+        "secondary_no_history": "Boolean",
+        "selection_mechanism": "String",
+        "selection_reason": "String",
+        "suggested_order_in_block": "Int64",
+        "target_inspection_id": "String",
+        "threshold_km": "Float64",
+        "work_block_id": "String",
+        "work_block_label": "String"
+      },
+      "sha256": "ed7149a273042a9c6ca284b4b48abfc2d495a48cbb1c420e93b29d7ba62370ce"
+    }
+  ],
+  "built_at": "2026-09-02T15:28:47.182682+00:00",
+  "checks": [
+    {
+      "detail": "Component 19's and Component 20's selected-id sets are identical",
+      "name": "selected_ids_unchanged_by_geography",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "calibrated_score, base_score, rank, policy_rank, selection_reason, selection_mechanism are byte-identical to Component 19's output",
+      "name": "risk_and_policy_fields_unchanged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "as_of_latitude/as_of_longitude are byte-identical to Component 19's output",
+      "name": "coordinates_are_never_fabricated_or_altered",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 establishment(s) appear more than once in the geographic plan",
+      "name": "no_duplicate_group_membership",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "available=29, unavailable=1",
+      "name": "location_coverage_counts_match_the_plan",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "1 location-unavailable establishment(s) are all present in the unmapped group",
+      "name": "unmapped_establishments_preserved_not_dropped",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "group numbering runs northernmost (highest centroid latitude) first",
+      "name": "group_ids_ordered_by_centroid_latitude",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every work block's suggested order is a 1..N permutation of its members",
+      "name": "suggested_order_is_permutation_of_block",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "risk_first suggested order matches policy_rank ascending in every block",
+      "name": "risk_first_never_reorders",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "geographic_organization",
+  "composite_model_name": "xgboost_platt",
+  "geographic_algorithm": "distance_threshold_connected_components",
+  "geographic_group_count": 21,
+  "geographic_organization_definition_version": "v2",
+  "group_metrics": [
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.99840430798829,
+      "centroid_lon": -87.78901421649417,
+      "group_id": "area_1",
+      "group_label": "Area 1",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002169313"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.99803106929147,
+      "centroid_lon": -87.68760322515347,
+      "group_id": "area_2",
+      "group_label": "Area 2",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00001981521"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.96903844204943,
+      "centroid_lon": -87.6676623870225,
+      "group_id": "area_3",
+      "group_label": "Area 3",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002129800"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.93848470457911,
+      "centroid_lon": -87.80661664953259,
+      "group_id": "area_4",
+      "group_label": "Area 4",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002088421"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 1.7794050846563103,
+      "centroid_lat": 41.93551986581,
+      "centroid_lon": -87.65193313943588,
+      "group_id": "area_5",
+      "group_label": "Area 5",
+      "max_within_group_distance_km": 3.587553041102117,
+      "member_establishment_ids": [
+        "EST-00002088377",
+        "EST-00002102880",
+        "EST-00002129487",
+        "EST-00002144415",
+        "EST-00002144881",
+        "EST-00002150803"
+      ],
+      "size": 6
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.932151379337505,
+      "centroid_lon": -87.70484154873154,
+      "group_id": "area_6",
+      "group_label": "Area 6",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002170153"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.922312062185554,
+      "centroid_lon": -87.68770889778496,
+      "group_id": "area_7",
+      "group_label": "Area 7",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002356195"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.91711938239052,
+      "centroid_lon": -87.7212875486863,
+      "group_id": "area_8",
+      "group_label": "Area 8",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002136074"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.910301633120945,
+      "centroid_lon": -87.69970063588622,
+      "group_id": "area_9",
+      "group_label": "Area 9",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002176718"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.88390509704504,
+      "centroid_lon": -87.70605925083947,
+      "group_id": "area_10",
+      "group_label": "Area 10",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002301200"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.8819664487557,
+      "centroid_lon": -87.64127582547708,
+      "group_id": "area_11",
+      "group_label": "Area 11",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002159538"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.2642280654906152,
+      "centroid_lat": 41.86941264890724,
+      "centroid_lon": -87.6847213371302,
+      "group_id": "area_12",
+      "group_label": "Area 12",
+      "max_within_group_distance_km": 0.2642280654906152,
+      "member_establishment_ids": [
+        "EST-00002050892",
+        "EST-00002169526"
+      ],
+      "size": 2
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.85603329491608,
+      "centroid_lon": -87.62852774627484,
+      "group_id": "area_13",
+      "group_label": "Area 13",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002135962"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.85045102427,
+      "centroid_lon": -87.65879785567869,
+      "group_id": "area_14",
+      "group_label": "Area 14",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002279336"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.842995989592936,
+      "centroid_lon": -87.69530930572087,
+      "group_id": "area_15",
+      "group_label": "Area 15",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002102601"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.832244173442454,
+      "centroid_lon": -87.6800730940298,
+      "group_id": "area_16",
+      "group_label": "Area 16",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002049478"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.81945368004568,
+      "centroid_lon": -87.6944017448022,
+      "group_id": "area_17",
+      "group_label": "Area 17",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002145017"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.80218114518527,
+      "centroid_lon": -87.59035631878895,
+      "group_id": "area_18",
+      "group_label": "Area 18",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002484799"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.77559323305909,
+      "centroid_lon": -87.69344900595998,
+      "group_id": "area_19",
+      "group_label": "Area 19",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002065073"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.76006782079787,
+      "centroid_lon": -87.5738260459932,
+      "group_id": "area_20",
+      "group_label": "Area 20",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002167129"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.5932689635211914,
+      "centroid_lat": 41.74541999551665,
+      "centroid_lon": -87.70399201466421,
+      "group_id": "area_21",
+      "group_label": "Area 21",
+      "max_within_group_distance_km": 0.8894091073426682,
+      "member_establishment_ids": [
+        "EST-00002145768",
+        "EST-00002145770",
+        "EST-00002151097"
+      ],
+      "size": 3
+    },
+    {
+      "avg_within_group_distance_km": null,
+      "centroid_lat": null,
+      "centroid_lon": null,
+      "group_id": "unmapped",
+      "group_label": "Unmapped / Location unavailable",
+      "max_within_group_distance_km": null,
+      "member_establishment_ids": [
+        "EST-00002181506"
+      ],
+      "size": 1
+    }
+  ],
+  "location_available_count": 29,
+  "location_coverage_pct": 96.7,
+  "location_unavailable_count": 1,
+  "notes": [
+    "Suggested order preserves Sentinel's priority ordering exactly (policy_rank ascending). Geography is used only to group and label establishments, never to reorder them.",
+    "18 of 21 geographic work block(s) contain a single establishment; the selected establishments are spatially dispersed at the 1.5 km threshold. A broader threshold (see --threshold-preset broad, or a larger --threshold-km) will merge more of them into shared blocks, at the cost of grouping establishments farther apart."
+  ],
+  "operational_selection_definition_version": "v1",
+  "organization_mode": "risk_first",
+  "planning_date": "2026-08-28",
+  "selected_count": 30,
+  "selection_artifact_path": "operational_selection_2026-08-28_cap30_20260828T163016Z.parquet",
+  "selection_artifact_sha256": "587fa61adb58f17acfb0ae489b1ae2f3777eddd9dcae9df2f3f0e38dea1e8a88",
+  "threshold_km": 1.5,
+  "threshold_preset": null,
+  "warnings": [
+    "1 of 30 selected establishment(s) have no usable coordinates and are preserved in the 'unmapped' group rather than fabricated a location"
+  ],
+  "work_blocks": [
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_1",
+      "centroid_lat": 41.99840430798829,
+      "centroid_lon": -87.78901421649417,
+      "establishment_ids": [
+        "EST-00002169313"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 21,
+      "label": "Area 1",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        21
+      ],
+      "rank_range": [
+        21,
+        21
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_2",
+      "centroid_lat": 41.99803106929147,
+      "centroid_lon": -87.68760322515347,
+      "establishment_ids": [
+        "EST-00001981521"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 10,
+      "label": "Area 2",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        10
+      ],
+      "rank_range": [
+        10,
+        10
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_3",
+      "centroid_lat": 41.96903844204943,
+      "centroid_lon": -87.6676623870225,
+      "establishment_ids": [
+        "EST-00002129800"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 13,
+      "label": "Area 3",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        13
+      ],
+      "rank_range": [
+        13,
+        13
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_4",
+      "centroid_lat": 41.93848470457911,
+      "centroid_lon": -87.80661664953259,
+      "establishment_ids": [
+        "EST-00002088421"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 4,
+      "label": "Area 4",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        4
+      ],
+      "rank_range": [
+        4,
+        4
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 1.7794050846563103,
+      "block_id": "area_5",
+      "centroid_lat": 41.93551986581,
+      "centroid_lon": -87.65193313943588,
+      "establishment_ids": [
+        "EST-00002088377",
+        "EST-00002102880",
+        "EST-00002129487",
+        "EST-00002144415",
+        "EST-00002144881",
+        "EST-00002150803"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 3,
+      "label": "Area 5",
+      "max_within_block_distance_km": 3.587553041102117,
+      "member_ranks": [
+        3,
+        9,
+        11,
+        16,
+        20,
+        26
+      ],
+      "rank_range": [
+        3,
+        26
+      ],
+      "rationale": "These 6 selected establishment(s) are within the configured geographic proximity threshold and can be considered as one field-work area. Proximity is based on straight-line geographic distance; Sentinel does not currently estimate driving time or traffic.",
+      "size": 6
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_6",
+      "centroid_lat": 41.932151379337505,
+      "centroid_lon": -87.70484154873154,
+      "establishment_ids": [
+        "EST-00002170153"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 23,
+      "label": "Area 6",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        23
+      ],
+      "rank_range": [
+        23,
+        23
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_7",
+      "centroid_lat": 41.922312062185554,
+      "centroid_lon": -87.68770889778496,
+      "establishment_ids": [
+        "EST-00002356195"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 1,
+      "label": "Area 7",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        1
+      ],
+      "rank_range": [
+        1,
+        1
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_8",
+      "centroid_lat": 41.91711938239052,
+      "centroid_lon": -87.7212875486863,
+      "establishment_ids": [
+        "EST-00002136074"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 15,
+      "label": "Area 8",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        15
+      ],
+      "rank_range": [
+        15,
+        15
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_9",
+      "centroid_lat": 41.910301633120945,
+      "centroid_lon": -87.69970063588622,
+      "establishment_ids": [
+        "EST-00002176718"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 30,
+      "label": "Area 9",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        30
+      ],
+      "rank_range": [
+        30,
+        30
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_10",
+      "centroid_lat": 41.88390509704504,
+      "centroid_lon": -87.70605925083947,
+      "establishment_ids": [
+        "EST-00002301200"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 6,
+      "label": "Area 10",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        6
+      ],
+      "rank_range": [
+        6,
+        6
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_11",
+      "centroid_lat": 41.8819664487557,
+      "centroid_lon": -87.64127582547708,
+      "establishment_ids": [
+        "EST-00002159538"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 29,
+      "label": "Area 11",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        29
+      ],
+      "rank_range": [
+        29,
+        29
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.2642280654906152,
+      "block_id": "area_12",
+      "centroid_lat": 41.86941264890724,
+      "centroid_lon": -87.6847213371302,
+      "establishment_ids": [
+        "EST-00002050892",
+        "EST-00002169526"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 22,
+      "label": "Area 12",
+      "max_within_block_distance_km": 0.2642280654906152,
+      "member_ranks": [
+        22,
+        24
+      ],
+      "rank_range": [
+        22,
+        24
+      ],
+      "rationale": "These 2 selected establishment(s) are within the configured geographic proximity threshold and can be considered as one field-work area. Proximity is based on straight-line geographic distance; Sentinel does not currently estimate driving time or traffic.",
+      "size": 2
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_13",
+      "centroid_lat": 41.85603329491608,
+      "centroid_lon": -87.62852774627484,
+      "establishment_ids": [
+        "EST-00002135962"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 14,
+      "label": "Area 13",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        14
+      ],
+      "rank_range": [
+        14,
+        14
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_14",
+      "centroid_lat": 41.85045102427,
+      "centroid_lon": -87.65879785567869,
+      "establishment_ids": [
+        "EST-00002279336"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 2,
+      "label": "Area 14",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        2
+      ],
+      "rank_range": [
+        2,
+        2
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_15",
+      "centroid_lat": 41.842995989592936,
+      "centroid_lon": -87.69530930572087,
+      "establishment_ids": [
+        "EST-00002102601"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 5,
+      "label": "Area 15",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        5
+      ],
+      "rank_range": [
+        5,
+        5
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_16",
+      "centroid_lat": 41.832244173442454,
+      "centroid_lon": -87.6800730940298,
+      "establishment_ids": [
+        "EST-00002049478"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 25,
+      "label": "Area 16",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        25
+      ],
+      "rank_range": [
+        25,
+        25
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_17",
+      "centroid_lat": 41.81945368004568,
+      "centroid_lon": -87.6944017448022,
+      "establishment_ids": [
+        "EST-00002145017"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 17,
+      "label": "Area 17",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        17
+      ],
+      "rank_range": [
+        17,
+        17
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_18",
+      "centroid_lat": 41.80218114518527,
+      "centroid_lon": -87.59035631878895,
+      "establishment_ids": [
+        "EST-00002484799"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 7,
+      "label": "Area 18",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        7
+      ],
+      "rank_range": [
+        7,
+        7
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_19",
+      "centroid_lat": 41.77559323305909,
+      "centroid_lon": -87.69344900595998,
+      "establishment_ids": [
+        "EST-00002065073"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 8,
+      "label": "Area 19",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        8
+      ],
+      "rank_range": [
+        8,
+        8
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.0,
+      "block_id": "area_20",
+      "centroid_lat": 41.76006782079787,
+      "centroid_lon": -87.5738260459932,
+      "establishment_ids": [
+        "EST-00002167129"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 27,
+      "label": "Area 20",
+      "max_within_block_distance_km": 0.0,
+      "member_ranks": [
+        27
+      ],
+      "rank_range": [
+        27,
+        27
+      ],
+      "rationale": "A single selected establishment with no other selected establishment within the configured geographic proximity threshold.",
+      "size": 1
+    },
+    {
+      "avg_within_block_distance_km": 0.5932689635211914,
+      "block_id": "area_21",
+      "centroid_lat": 41.74541999551665,
+      "centroid_lon": -87.70399201466421,
+      "establishment_ids": [
+        "EST-00002145768",
+        "EST-00002145770",
+        "EST-00002151097"
+      ],
+      "has_unmapped_member": false,
+      "highest_sentinel_rank": 12,
+      "label": "Area 21",
+      "max_within_block_distance_km": 0.8894091073426682,
+      "member_ranks": [
+        12,
+        18,
+        19
+      ],
+      "rank_range": [
+        12,
+        19
+      ],
+      "rationale": "These 3 selected establishment(s) are within the configured geographic proximity threshold and can be considered as one field-work area. Proximity is based on straight-line geographic distance; Sentinel does not currently estimate driving time or traffic.",
+      "size": 3
+    },
+    {
+      "avg_within_block_distance_km": null,
+      "block_id": "unmapped",
+      "centroid_lat": null,
+      "centroid_lon": null,
+      "establishment_ids": [
+        "EST-00002181506"
+      ],
+      "has_unmapped_member": true,
+      "highest_sentinel_rank": 28,
+      "label": "Unmapped / Location unavailable",
+      "max_within_block_distance_km": null,
+      "member_ranks": [
+        28
+      ],
+      "rank_range": [
+        28,
+        28
+      ],
+      "rationale": "Coordinates are unavailable for this establishment, so Sentinel cannot place it into a geographic work block.",
+      "size": 1
+    }
+  ]
+}

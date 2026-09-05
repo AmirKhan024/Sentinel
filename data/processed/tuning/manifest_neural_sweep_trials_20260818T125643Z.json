@@ -1,0 +1,147 @@
+{
+  "artifacts": [
+    {
+      "bytes": 5922,
+      "path": "neural_sweep_trials_20260818T125643Z.parquet",
+      "row_count": 40,
+      "schema": {
+        "best_epoch": "Int32",
+        "fold_set": "String",
+        "inner_fold_id": "String",
+        "learning_rate": "Float64",
+        "model_name": "String",
+        "neural_definition_version": "String",
+        "pr_auc": "Float64",
+        "region_end": "Date",
+        "region_start": "Date",
+        "seed": "Int32",
+        "selected": "Boolean",
+        "study": "String",
+        "train_rows": "Int32",
+        "validation_rows": "Int32"
+      },
+      "sha256": "ebd51e08f9401661d1c35aaf83bd2280e19aa9dc37eb938bd9291891511e01ce"
+    }
+  ],
+  "best_learning_rate": {
+    "covid_shift": 0.01,
+    "quarterly": 0.003
+  },
+  "blas_threads": "unset (library default)",
+  "blocked": [
+    "an establishment_id embedding: refused, not blocked by the data. It is the obvious thing for this component to learn and it is the largest leakage surface in the project -- a per-establishment parameter carries whatever the network learned about that establishment from every row it appeared in. Component 4 excludes identity by design and modeling.definitions.FORBIDDEN_COLUMNS enforces it. `chain` is the deliberate lower-cardinality substitute, derived per fold from training rows only. See ADR 0021",
+    "inspector-effect modelling: the Chicago food inspections dataset publishes 22 columns and none identifies an inspector, so an inspector embedding -- the thing an entity-embedding component would most naturally add -- is undefined. Unchanged from Component 7. See ADR 0019",
+    "probability calibration: neural probabilities are emitted raw and uncorrected. Temperature scaling, Platt scaling, isotonic regression and any operating threshold belong to Component 9",
+    "demographic features: no race, income or ACS variable is used anywhere. Community area is included ONLY as an explicitly labelled experimental embedding with a matched ablation, and a better score with it is not grounds for retaining it. The fairness audit is Component 12's. See ADR 0023",
+    "SHAP or any attribution over the learned representation: Component 11's. The embedding tables emitted here are a representation, not an explanation",
+    "ensembling the network with Components 6 and 7: comes after the individual model stages, so that it is clear which member carries a result"
+  ],
+  "built_at": "2026-08-18T12:56:43.679505+00:00",
+  "categoricals_path": "neural_categoricals_20260818T125631Z.parquet",
+  "categoricals_sha256": "4a3dc38659f4c42b5c32ac6840079aa0229c4e8b30fc97cfc100bf1963bf445c",
+  "checks": [
+    {
+      "detail": "every learning-rate search ran strictly earlier than its fold set's first test window",
+      "name": "sweep_never_reached_a_test_window",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every search used exactly the inner folds its own fold set implies",
+      "name": "sweep_inner_folds_are_ordered_and_disjoint",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every learning rate in the grid produced a finite mean validation PR-AUC",
+      "name": "every_rate_was_scored",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every selected rate is one the search actually evaluated",
+      "name": "selected_rate_is_in_the_grid",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "neural_tuning",
+  "device": "cpu",
+  "early_stopping_patience": 15,
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "first_test_start": {
+    "covid_shift": "2020-06-01",
+    "quarterly": "2022-04-01"
+  },
+  "grid": [
+    0.0001,
+    0.0003,
+    0.001,
+    0.003,
+    0.01
+  ],
+  "inner_folds": {
+    "covid_shift": [
+      "tuning-covid_shift-2019Q4",
+      "tuning-covid_shift-2020Q1"
+    ],
+    "quarterly": [
+      "tuning-quarterly-2020Q4",
+      "tuning-quarterly-2021Q1",
+      "tuning-quarterly-2021Q2",
+      "tuning-quarterly-2021Q3",
+      "tuning-quarterly-2021Q4",
+      "tuning-quarterly-2022Q1"
+    ]
+  },
+  "max_epochs": 200,
+  "mean_pr_auc": {
+    "covid_shift/lr=0.0001": 0.781966,
+    "covid_shift/lr=0.0003": 0.785372,
+    "covid_shift/lr=0.001": 0.786936,
+    "covid_shift/lr=0.003": 0.787894,
+    "covid_shift/lr=0.01": 0.792758,
+    "quarterly/lr=0.0001": 0.591803,
+    "quarterly/lr=0.0003": 0.594319,
+    "quarterly/lr=0.001": 0.604957,
+    "quarterly/lr=0.003": 0.607026,
+    "quarterly/lr=0.01": 0.596385
+  },
+  "neural_definition_version": "v1",
+  "numpy_version": "2.5.2",
+  "objective": "mean PR-AUC across temporally ordered inner validation windows, each strictly later than its own inner training window and all strictly earlier than the fold set's first test window",
+  "search": "exhaustive grid over LEARNING_RATE_GRID; no adaptive sampler",
+  "seconds_total": 550.944,
+  "seed": 20260818,
+  "selection_reasons": {
+    "covid_shift": "highest mean inner-validation PR-AUC (0.792758)",
+    "quarterly": "highest mean inner-validation PR-AUC (0.607026)"
+  },
+  "studies": [
+    {
+      "best_learning_rate": "0.01",
+      "fold_set": "covid_shift",
+      "inner_folds": "2",
+      "region": "2018-07-01..2020-05-31",
+      "study": "neural_embeddings-covid_shift"
+    },
+    {
+      "best_learning_rate": "0.003",
+      "fold_set": "quarterly",
+      "inner_folds": "6",
+      "region": "2018-07-01..2022-03-31",
+      "study": "neural_embeddings-quarterly"
+    }
+  ],
+  "torch_threads": 1,
+  "torch_version": "2.13.0+cpu",
+  "trial_rows": 40,
+  "tuning_regions": {
+    "covid_shift": "2018-07-01..2020-05-31",
+    "quarterly": "2018-07-01..2022-03-31"
+  }
+}

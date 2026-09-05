@@ -1,0 +1,382 @@
+{
+  "artifacts": [
+    {
+      "bytes": 17114,
+      "path": "geographic_inspection_plan_2026-08-28_20260902T134451Z.parquet",
+      "row_count": 30,
+      "schema": {
+        "as_of_address": "String",
+        "as_of_dba_name": "String",
+        "as_of_latitude": "Float64",
+        "as_of_longitude": "Float64",
+        "as_of_zip": "String",
+        "base_model_name": "String",
+        "base_score": "Float64",
+        "calibrated_score": "Float64",
+        "calibration_method": "String",
+        "canonical_address": "String",
+        "canonical_name": "String",
+        "canonical_zip": "String",
+        "composite_model_name": "String",
+        "coverage_eligible": "Boolean",
+        "establishment_id": "String",
+        "geographic_algorithm": "String",
+        "geographic_group_id": "String",
+        "geographic_group_label": "String",
+        "geographic_organization_definition_version": "String",
+        "is_selected": "Boolean",
+        "location_status": "String",
+        "n_prior_records": "Int64",
+        "operational_selection_definition_version": "String",
+        "planning_date": "String",
+        "policy_id": "String",
+        "policy_rank": "Int64",
+        "rank": "Int64",
+        "requested_capacity": "Int64",
+        "secondary_no_history": "Boolean",
+        "selection_mechanism": "String",
+        "selection_reason": "String",
+        "target_inspection_id": "String",
+        "threshold_km": "Float64"
+      },
+      "sha256": "6fc4fc3d67c79ea5c1bc052e289fa52e57dbdb215c997c6926bf51cab2531c54"
+    }
+  ],
+  "built_at": "2026-09-02T13:44:51.914054+00:00",
+  "checks": [
+    {
+      "detail": "Component 19's and Component 20's selected-id sets are identical",
+      "name": "selected_ids_unchanged_by_geography",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "calibrated_score, base_score, rank, policy_rank, selection_reason, selection_mechanism are byte-identical to Component 19's output",
+      "name": "risk_and_policy_fields_unchanged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "as_of_latitude/as_of_longitude are byte-identical to Component 19's output",
+      "name": "coordinates_are_never_fabricated_or_altered",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "0 establishment(s) appear more than once in the geographic plan",
+      "name": "no_duplicate_group_membership",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "available=29, unavailable=1",
+      "name": "location_coverage_counts_match_the_plan",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "1 location-unavailable establishment(s) are all present in the unmapped group",
+      "name": "unmapped_establishments_preserved_not_dropped",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "group numbering runs northernmost (highest centroid latitude) first",
+      "name": "group_ids_ordered_by_centroid_latitude",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "geographic_organization",
+  "composite_model_name": "xgboost_platt",
+  "geographic_algorithm": "distance_threshold_connected_components",
+  "geographic_group_count": 21,
+  "geographic_organization_definition_version": "v1",
+  "group_metrics": [
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.99840430798829,
+      "centroid_lon": -87.78901421649417,
+      "group_id": "area_1",
+      "group_label": "Area 1",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002169313"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.99803106929147,
+      "centroid_lon": -87.68760322515347,
+      "group_id": "area_2",
+      "group_label": "Area 2",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00001981521"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.96903844204943,
+      "centroid_lon": -87.6676623870225,
+      "group_id": "area_3",
+      "group_label": "Area 3",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002129800"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.93848470457911,
+      "centroid_lon": -87.80661664953259,
+      "group_id": "area_4",
+      "group_label": "Area 4",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002088421"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 1.7794050846563103,
+      "centroid_lat": 41.93551986581,
+      "centroid_lon": -87.65193313943588,
+      "group_id": "area_5",
+      "group_label": "Area 5",
+      "max_within_group_distance_km": 3.587553041102117,
+      "member_establishment_ids": [
+        "EST-00002088377",
+        "EST-00002102880",
+        "EST-00002129487",
+        "EST-00002144415",
+        "EST-00002144881",
+        "EST-00002150803"
+      ],
+      "size": 6
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.932151379337505,
+      "centroid_lon": -87.70484154873154,
+      "group_id": "area_6",
+      "group_label": "Area 6",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002170153"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.922312062185554,
+      "centroid_lon": -87.68770889778496,
+      "group_id": "area_7",
+      "group_label": "Area 7",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002356195"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.91711938239052,
+      "centroid_lon": -87.7212875486863,
+      "group_id": "area_8",
+      "group_label": "Area 8",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002136074"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.910301633120945,
+      "centroid_lon": -87.69970063588622,
+      "group_id": "area_9",
+      "group_label": "Area 9",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002176718"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.88390509704504,
+      "centroid_lon": -87.70605925083947,
+      "group_id": "area_10",
+      "group_label": "Area 10",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002301200"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.8819664487557,
+      "centroid_lon": -87.64127582547708,
+      "group_id": "area_11",
+      "group_label": "Area 11",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002159538"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.2642280654906152,
+      "centroid_lat": 41.86941264890724,
+      "centroid_lon": -87.6847213371302,
+      "group_id": "area_12",
+      "group_label": "Area 12",
+      "max_within_group_distance_km": 0.2642280654906152,
+      "member_establishment_ids": [
+        "EST-00002050892",
+        "EST-00002169526"
+      ],
+      "size": 2
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.85603329491608,
+      "centroid_lon": -87.62852774627484,
+      "group_id": "area_13",
+      "group_label": "Area 13",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002135962"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.85045102427,
+      "centroid_lon": -87.65879785567869,
+      "group_id": "area_14",
+      "group_label": "Area 14",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002279336"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.842995989592936,
+      "centroid_lon": -87.69530930572087,
+      "group_id": "area_15",
+      "group_label": "Area 15",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002102601"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.832244173442454,
+      "centroid_lon": -87.6800730940298,
+      "group_id": "area_16",
+      "group_label": "Area 16",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002049478"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.81945368004568,
+      "centroid_lon": -87.6944017448022,
+      "group_id": "area_17",
+      "group_label": "Area 17",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002145017"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.80218114518527,
+      "centroid_lon": -87.59035631878895,
+      "group_id": "area_18",
+      "group_label": "Area 18",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002484799"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.77559323305909,
+      "centroid_lon": -87.69344900595998,
+      "group_id": "area_19",
+      "group_label": "Area 19",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002065073"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.0,
+      "centroid_lat": 41.76006782079787,
+      "centroid_lon": -87.5738260459932,
+      "group_id": "area_20",
+      "group_label": "Area 20",
+      "max_within_group_distance_km": 0.0,
+      "member_establishment_ids": [
+        "EST-00002167129"
+      ],
+      "size": 1
+    },
+    {
+      "avg_within_group_distance_km": 0.5932689635211914,
+      "centroid_lat": 41.74541999551665,
+      "centroid_lon": -87.70399201466421,
+      "group_id": "area_21",
+      "group_label": "Area 21",
+      "max_within_group_distance_km": 0.8894091073426682,
+      "member_establishment_ids": [
+        "EST-00002145768",
+        "EST-00002145770",
+        "EST-00002151097"
+      ],
+      "size": 3
+    },
+    {
+      "avg_within_group_distance_km": null,
+      "centroid_lat": null,
+      "centroid_lon": null,
+      "group_id": "unmapped",
+      "group_label": "Unmapped / Location unavailable",
+      "max_within_group_distance_km": null,
+      "member_establishment_ids": [
+        "EST-00002181506"
+      ],
+      "size": 1
+    }
+  ],
+  "location_available_count": 29,
+  "location_coverage_pct": 96.7,
+  "location_unavailable_count": 1,
+  "operational_selection_definition_version": "v1",
+  "planning_date": "2026-08-28",
+  "selected_count": 30,
+  "selection_artifact_path": "operational_selection_2026-08-28_cap30_20260828T163016Z.parquet",
+  "selection_artifact_sha256": "587fa61adb58f17acfb0ae489b1ae2f3777eddd9dcae9df2f3f0e38dea1e8a88",
+  "threshold_km": 1.5,
+  "warnings": [
+    "1 of 30 selected establishment(s) have no usable coordinates and are preserved in the 'unmapped' group rather than fabricated a location"
+  ]
+}

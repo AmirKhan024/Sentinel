@@ -1,0 +1,565 @@
+{
+  "abstention_policy": "Sentinel never abstains. Every row in the prediction universe receives a recommendation and a rank; a warning annotates that recommendation rather than withholding it. An abstention would require a per-row confidence estimate, and this project has not built one -- no predictive interval, no conformal set, no ensemble spread. Emitting an abstention category anyway would be manufacturing the statistic that justifies it",
+  "advisories": [
+    "reserve_is_not_inert: 1000 of 2072 reserving cell(s) granted no slots. Evidence about the queue's existing coverage, not an implementation error.",
+    "coverage_is_not_free: 17 (policy, capacity) cell(s) gave up citations, -653 in total. The measured price of coverage, reported rather than hidden.",
+    "group_representation_is_stable: 55 (policy, group, fold, capacity) cell(s) moved a supported group's share of the queue by more than 0.05",
+    "a_winner_was_determined: the data does not determine the correct policy"
+  ],
+  "artifacts": [
+    {
+      "bytes": 11344946,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\inspection_recommendations_20260826T075812Z.parquet",
+      "row_count": 1453760,
+      "schema": {
+        "base_score": "Float64",
+        "coverage_eligible": "Boolean",
+        "decision_mechanism": "String",
+        "decision_reason": "String",
+        "establishment_id": "String",
+        "final_policy_rank": "Int64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "inspection_date": "Date",
+        "is_selected": "Boolean",
+        "k": "Int64",
+        "k_name": "String",
+        "model_name": "String",
+        "model_rank": "Int64",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "score": "Float64",
+        "secondary_no_history": "Boolean",
+        "target_inspection_id": "String",
+        "warnings": "String"
+      },
+      "sha256": "c796822d12dd6a97cfbcf40950271784cecdb89fe340d7e752d453cc886b478c"
+    },
+    {
+      "bytes": 3380,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_advisories_20260826T075812Z.parquet",
+      "row_count": 4,
+      "schema": {
+        "code": "String",
+        "detail": "String",
+        "n_cells": "Int64",
+        "policy_definition_version": "String",
+        "scope": "String",
+        "severity": "String"
+      },
+      "sha256": "322307a3c108f9a934d1615c7162cbb9370f44de9ab5770df34251d7ff0c4e0b"
+    },
+    {
+      "bytes": 69127,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_comparison_20260826T075812Z.parquet",
+      "row_count": 2520,
+      "schema": {
+        "capture_rate": "Float64",
+        "delta_capture": "Float64",
+        "delta_eligible_capture": "Float64",
+        "delta_eligible_selected": "Float64",
+        "delta_nde": "Float64",
+        "delta_positives": "Float64",
+        "delta_precision": "Float64",
+        "eligible_capture_rate": "Float64",
+        "eligible_positives_selected": "Int64",
+        "eligible_selected": "Int64",
+        "eligible_selected_share": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k": "Int64",
+        "k_name": "String",
+        "lift_at_k": "Float64",
+        "model_name": "String",
+        "n_eligible_available": "Int64",
+        "n_eligible_in_risk_top_k": "Int64",
+        "n_positive": "Int64",
+        "n_reserve": "Int64",
+        "n_risk": "Int64",
+        "n_selected": "Int64",
+        "n_universe": "Int64",
+        "nde": "Float64",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "positives_selected": "Int64",
+        "precision_at_k": "Float64",
+        "reserve_inert": "Boolean",
+        "reserve_target": "Int64"
+      },
+      "sha256": "e5ec54e81cc28898fc22ec7575621648a803baf924467feeb5e141cb34999448"
+    },
+    {
+      "bytes": 3491,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_configurations_20260826T075812Z.parquet",
+      "row_count": 7,
+      "schema": {
+        "is_baseline": "Boolean",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "rationale": "String",
+        "reserve_mechanism": "String",
+        "reserve_share": "Float64"
+      },
+      "sha256": "cbba2c5a6d4c9a4c11e1b66a06c4a4f4106d09eb06602081c62ed38398f98e57"
+    },
+    {
+      "bytes": 6619,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_coverage_eligibility_20260826T075812Z.parquet",
+      "row_count": 20,
+      "schema": {
+        "base_rate": "Float64",
+        "eligibility_column": "String",
+        "eligible_base_rate": "Float64",
+        "eligible_share": "Float64",
+        "eligible_share_of_positives": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "grain": "String",
+        "n_eligible": "Int64",
+        "n_eligible_positive": "Int64",
+        "n_positive": "Int64",
+        "n_rows": "Int64",
+        "n_secondary_no_history": "Int64",
+        "policy_definition_version": "String"
+      },
+      "sha256": "2f48f89ec0508134bd4fb0db2e154c5aa9938811c4ac6c3757393c52d5edebf5"
+    },
+    {
+      "bytes": 14581,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_decision_reasons_20260826T075812Z.parquet",
+      "row_count": 6750,
+      "schema": {
+        "decision_mechanism": "String",
+        "decision_reason": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k_name": "String",
+        "model_name": "String",
+        "n_rows": "Int64",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "warnings": "String"
+      },
+      "sha256": "e4ce507c7e82ff44d363e32d63717841b9155694d9e101bc8d79ee4faf7b8324"
+    },
+    {
+      "bytes": 4948,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_frontier_20260826T075812Z.parquet",
+      "row_count": 280,
+      "schema": {
+        "dominated_by": "String",
+        "eligible_selected": "Float64",
+        "fold_set": "String",
+        "is_dominated": "Boolean",
+        "k_name": "String",
+        "model_name": "String",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "positives_selected": "Float64"
+      },
+      "sha256": "b52e0659f57ff847d491e85fe9efdd919c7651640eb703864cb8bc445edffd5f"
+    },
+    {
+      "bytes": 86983,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_group_audit_20260826T075812Z.parquet",
+      "row_count": 47810,
+      "schema": {
+        "capture_rate": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "group_definition": "String",
+        "group_status": "String",
+        "group_value": "String",
+        "k_name": "String",
+        "model_name": "String",
+        "n_positive": "Int64",
+        "n_rows": "Int64",
+        "n_selected": "Int64",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "population_share": "Float64",
+        "positives_selected": "Int64",
+        "selected_share": "Float64",
+        "selection_rate": "Float64"
+      },
+      "sha256": "88f1a21992089d4c7fc2646cf5616e9037a18ba1f29544ec08cfa28bfebd3b56"
+    },
+    {
+      "bytes": 5473,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_model_selection_20260826T075812Z.parquet",
+      "row_count": 5,
+      "schema": {
+        "admissibility_reason": "String",
+        "admissible": "Boolean",
+        "decided_on_axis": "String",
+        "ece": "Float64",
+        "fold_set": "String",
+        "is_selected": "Boolean",
+        "model_name": "String",
+        "nde": "Float64",
+        "nde_p05": "Float64",
+        "nde_p95": "Float64",
+        "policy_definition_version": "String",
+        "precision_at_k_1_day": "Float64",
+        "selected_under_discarded_band": "Boolean",
+        "tied_on_nde": "Boolean"
+      },
+      "sha256": "a2da3700b1008eb137811ba4261bd1d6bbec6fdd3c6679b80dab1729038628e2"
+    },
+    {
+      "bytes": 1949,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_override_log_20260826T075812Z.parquet",
+      "row_count": 0,
+      "schema": {
+        "action": "String",
+        "actor": "String",
+        "decided_at": "String",
+        "displaced_target_inspection_id": "String",
+        "final_is_selected": "Boolean",
+        "fold_id": "String",
+        "fold_set": "String",
+        "k_name": "String",
+        "original_is_selected": "Boolean",
+        "original_mechanism": "String",
+        "original_policy_rank": "Int64",
+        "original_reason": "String",
+        "outcome": "String",
+        "override_id": "String",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "reason_code": "String",
+        "target_inspection_id": "String"
+      },
+      "sha256": "fa0bb15bd3955d12ef98aba997a9ae29dfa14558ff900eb7712d2acdafa18934"
+    },
+    {
+      "bytes": 10845,
+      "path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\policy\\policy_selection_allocation_20260826T075812Z.parquet",
+      "row_count": 2520,
+      "schema": {
+        "fold_id": "String",
+        "fold_set": "String",
+        "k": "Int64",
+        "k_name": "String",
+        "model_name": "String",
+        "n_eligible_available": "Int64",
+        "n_eligible_in_risk_top_k": "Int64",
+        "n_reserve": "Int64",
+        "n_risk": "Int64",
+        "n_selected": "Int64",
+        "n_universe": "Int64",
+        "policy_definition_version": "String",
+        "policy_id": "String",
+        "reserve_inert": "Boolean",
+        "reserve_mechanism": "String",
+        "reserve_share": "Float64",
+        "reserve_target": "Int64"
+      },
+      "sha256": "badb8aac18fcb2dd07a8695f81a44301063a1c5de652c5e90c6e586a1f95687c"
+    }
+  ],
+  "blocked": [
+    "adjusting any score by geography, or applying a group-specific threshold or calibrator (ADR 0034)",
+    "geographic quotas, or any allocation keyed to community area or ZIP (ADR 0038)",
+    "re-fitting, re-calibrating or re-scoring any model (ADR 0026, ADR 0029)",
+    "introducing a probability threshold (Component 12's THRESHOLD_POLICY)",
+    "joining any Component 12 group-conditional number onto a feature table (ADR 0032)",
+    "inspector-effect adjustment: the dataset has no inspector (ADR 0019)"
+  ],
+  "built_at": "2026-08-26T07:58:12.494371+00:00",
+  "calibrated_predictions_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\predictions\\calibrated_predictions_20260824T163608Z.parquet",
+  "calibrated_predictions_sha256": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+  "calibration_definition_version": "v1",
+  "candidate_models": [
+    "lightgbm_platt",
+    "logistic_regression_platt",
+    "neural_numeric_only_platt",
+    "xgboost_platt"
+  ],
+  "capacity_semantics": "capacity is a rank position derived from the window's measured median daily inspection rate. No policy in this component uses a probability threshold, and there is no flag to add one",
+  "categoricals_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\neural\\neural_categoricals_20260818T125631Z.parquet",
+  "categoricals_sha256": "4a3dc38659f4c42b5c32ac6840079aa0229c4e8b30fc97cfc100bf1963bf445c",
+  "checks": [
+    {
+      "detail": "0 table(s) unsorted or carrying a duplicate key",
+      "name": "tables_are_deterministically_sorted",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) do not hold exactly the prediction universe",
+      "name": "recommendations_cover_the_universe",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) select a number of establishments other than k",
+      "name": "selected_counts_equal_capacity",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 allocation(s) do not add up, or spend more than the declared reserve",
+      "name": "allocations_are_internally_consistent",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 duplicated (cell, establishment) row(s)",
+      "name": "no_establishment_is_selected_twice",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 mechanism or reason-code defect(s)",
+      "name": "every_row_declares_a_valid_mechanism",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 reserve selection(s) are not coverage-eligible",
+      "name": "reserve_rows_are_eligible",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) where risk selection and model rank disagree",
+      "name": "risk_rows_satisfy_the_risk_contract",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) with a duplicated, missing or stray policy rank",
+      "name": "policy_ranks_are_unique_and_contiguous",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 row(s) where the eligibility flag differs from prior_canvass_count_code_era == 0",
+      "name": "eligibility_matches_the_declared_rule",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 outcome column(s) present in a decision artifact",
+      "name": "no_outcome_column_reaches_the_policy",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "the queue is byte-identical with the warning inputs withheld",
+      "name": "warnings_do_not_change_the_queue",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 policy configuration(s) differ from the frozen grid",
+      "name": "configurations_match_the_frozen_grid",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 cell(s) present in one table only",
+      "name": "comparison_covers_every_policy",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 group(s) Component 12 called unsupported are labelled otherwise",
+      "name": "unsupported_groups_are_preserved",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no overrides were applied",
+      "name": "overrides_are_fully_attributed",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "no overrides were applied",
+      "name": "overrides_left_the_deterministic_queue_intact",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "0 input artifact(s) changed during the run",
+      "name": "inputs_were_not_modified",
+      "passed": true,
+      "severity": "error"
+    },
+    {
+      "detail": "1000 of 2072 reserving cell(s) granted no slots. Evidence about the queue's existing coverage, not an implementation error.",
+      "name": "reserve_is_not_inert",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "17 (policy, capacity) cell(s) gave up citations, -653 in total. The measured price of coverage, reported rather than hidden.",
+      "name": "coverage_is_not_free",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "55 (policy, group, fold, capacity) cell(s) moved a supported group's share of the queue by more than 0.05",
+      "name": "group_representation_is_stable",
+      "passed": false,
+      "severity": "warn"
+    },
+    {
+      "detail": "the data does not determine the correct policy",
+      "name": "a_winner_was_determined",
+      "passed": false,
+      "severity": "warn"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "decision_policy",
+  "determinism_scope": "the policy computation is deterministic: identical inputs produce byte-identical tables, and shuffling the input rows changes nothing. Overrides are external human decisions, so a run is byte-identical only given the identical override file, and the manifest pins that file by checksum rather than claiming it is reproducible",
+  "discarded_tie_band": 0.0058,
+  "does_not_establish": [
+    "that the recommended queue is the correct queue. It is the queue one stated policy produces from one selected model under one capacity assumption",
+    "that the selected model is the best model. Four candidates were statistically indistinguishable on the headline metric and the rule broke the tie on a secondary axis",
+    "that a coverage reserve is fair, or that its absence is unfair. Neither word is defined here and no fairness criterion was optimised",
+    "that establishments with no history are treated correctly. The component measures what each policy does to them and prices it; which price is acceptable is not measured",
+    "that the measured opportunity cost would be the realised cost. Every number is a re-ordering of inspections that already happened, and inherits Component 5's limitation whole",
+    "any legal, regulatory or ethical position. No protected characteristic is observed anywhere in this project, and ADR 0035's boundary is inherited unchanged"
+  ],
+  "eligibility_column": "prior_canvass_count_code_era",
+  "eligibility_is_not_geography": "coverage eligibility is missing inspection history, measured per row by Component 4. It is never a geographic group, never Component 12's __UNKNOWN__ token, and never a group-conditional number joined back onto a row",
+  "eligibility_rule": "coverage_eligible <=> prior_canvass_count_code_era == 0; a null is never eligible",
+  "eligible_population_share": 0.1043,
+  "evaluation_definition_version": "v1",
+  "evaluation_folds_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\evaluation\\evaluation_folds_20260824T160045Z.parquet",
+  "evaluation_folds_sha256": "31dc7fac00c050165efa02fc005c73c7392fccaa1c3b5a2265afa3a037b442b7",
+  "evaluation_metrics_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\evaluation\\evaluation_metrics_20260824T160045Z.parquet",
+  "evaluation_metrics_sha256": "98429dd1a8821e0a452084f24c4e6f8d6650cce0a796a1212b75edc72ba2b848",
+  "fairness_support_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\fairness\\fairness_group_support_20260825T173633Z.parquet",
+  "fairness_support_sha256": "c5a8e0d945e20df5455495e1106c45f9e56e5a3dad54124bb24d5f4190ebe5f5",
+  "feature_definition_version": "v1",
+  "features_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\features\\as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "inherited_limitations": [
+    "Component 5: this is a re-ordering study over inspections that actually happened. No establishment nobody inspected has a label, so nothing here speaks to coverage of the uninspected",
+    "Component 3: the target is that a Priority violation was *cited*, not that an establishment was unsafe",
+    "Component 9: probabilities are calibrated in the quarterly mean, not in any single quarter, and calibration made ECE worse on 16 of 85 quarterly cells",
+    "Component 12: geographic differences are confounded with inspection practice by construction, because Chicago assigns inspectors by district and the dataset names none"
+  ],
+  "input_sha256_after": {
+    "calibrated_predictions": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+    "categoricals": "4a3dc38659f4c42b5c32ac6840079aa0229c4e8b30fc97cfc100bf1963bf445c",
+    "evaluation_folds": "31dc7fac00c050165efa02fc005c73c7392fccaa1c3b5a2265afa3a037b442b7",
+    "evaluation_metrics": "98429dd1a8821e0a452084f24c4e6f8d6650cce0a796a1212b75edc72ba2b848",
+    "fairness_support": "c5a8e0d945e20df5455495e1106c45f9e56e5a3dad54124bb24d5f4190ebe5f5",
+    "features": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+    "sensitivity": "db15bbf290c8520beeb17da108113babfe778957b4d30be5f0a50c7da4172500",
+    "simulation_summary": "6440ce776dce432e6fc19fb20643d47974edc94e0b486ebbc1f4da49a38d1d7b"
+  },
+  "inputs_unchanged": true,
+  "k_levels": [
+    "k_pct_01",
+    "k_pct_05",
+    "k_pct_10",
+    "k_1_day",
+    "k_1_week"
+  ],
+  "no_winner_statement": "the data does not determine the correct policy",
+  "override_cannot": "an override changes the final decision only. It never edits a score, a rank, a mechanism, a reason code or the deterministic queue artifact, all of which are written unchanged beside the override log so the original recommendation stays recoverable",
+  "overrides_applied": 0,
+  "overrides_path": null,
+  "overrides_sha256": null,
+  "policy_definition_version": "v1",
+  "policy_grid": [
+    {
+      "policy_id": "pure_risk",
+      "reserve_mechanism": "none",
+      "reserve_share": 0.0
+    },
+    {
+      "policy_id": "coverage_floor_half_share",
+      "reserve_mechanism": "floor",
+      "reserve_share": 0.05
+    },
+    {
+      "policy_id": "coverage_floor_population_share",
+      "reserve_mechanism": "floor",
+      "reserve_share": 0.1
+    },
+    {
+      "policy_id": "coverage_floor_double_share",
+      "reserve_mechanism": "floor",
+      "reserve_share": 0.2
+    },
+    {
+      "policy_id": "coverage_forced_half_share",
+      "reserve_mechanism": "forced",
+      "reserve_share": 0.05
+    },
+    {
+      "policy_id": "coverage_forced_population_share",
+      "reserve_mechanism": "forced",
+      "reserve_share": 0.1
+    },
+    {
+      "policy_id": "coverage_forced_double_share",
+      "reserve_mechanism": "forced",
+      "reserve_share": 0.2
+    }
+  ],
+  "policy_winner": null,
+  "policy_winner_rule": "a policy is declared the winner only when it is the unique non-dominated policy on every frontier axis. Otherwise no winner is named, the surviving frontier is published, and the choice is recorded as a governance decision this component does not make",
+  "primary_k_level": "k_1_day",
+  "production_model_claim": "an operating choice of the policy layer, applied from a rule fixed before it was run and recorded with its inputs. Revisable. NOT a finding that this model is the best one, and NOT a resolution of whether the ordering survives distribution shift -- the covid_shift fold orders these models differently and one shift episode cannot carry a selection rule",
+  "refused_models": [
+    "xgboost_chain_embeddings_platt"
+  ],
+  "reserve_shares": [
+    0.05,
+    0.1,
+    0.2
+  ],
+  "row_counts": {
+    "inspection_recommendations": 1453760,
+    "policy_advisories": 4,
+    "policy_comparison": 2520,
+    "policy_configurations": 7,
+    "policy_coverage_eligibility": 20,
+    "policy_decision_reasons": 6750,
+    "policy_frontier": 280,
+    "policy_group_audit": 47810,
+    "policy_model_selection": 5,
+    "policy_override_log": 0,
+    "policy_selection_allocation": 2520
+  },
+  "secondary_flag_column": "prior_inspection_count_any_type",
+  "seconds": 18.066853,
+  "selected_model": "xgboost_platt",
+  "selected_model_under_discarded_band": "neural_numeric_only_platt",
+  "selection_axes": [
+    [
+      "nde",
+      "higher"
+    ],
+    [
+      "ece",
+      "lower"
+    ],
+    [
+      "precision_at_k_1_day",
+      "higher"
+    ],
+    [
+      "model_name",
+      "lower"
+    ]
+  ],
+  "selection_decided_on_axis": "ece",
+  "selection_fold_set": "quarterly",
+  "selection_tie_rule": "two models are tied on NDE when their Component 5 sensitivity intervals (p05-p95, 1,000 label-flip replications, quarterly mean) overlap",
+  "sensitivity_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\evaluation\\sensitivity_20260824T160045Z.parquet",
+  "sensitivity_sha256": "db15bbf290c8520beeb17da108113babfe778957b4d30be5f0a50c7da4172500",
+  "simulation_summary_path": "C:\\Users\\Amir Khan\\Desktop\\Sentinel\\data\\processed\\evaluation\\simulation_summary_20260824T160045Z.parquet",
+  "simulation_summary_sha256": "6440ce776dce432e6fc19fb20643d47974edc94e0b486ebbc1f4da49a38d1d7b"
+}

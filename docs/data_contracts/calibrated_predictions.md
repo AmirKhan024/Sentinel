@@ -4,8 +4,11 @@
 **Layers:** `data/processed/predictions/` (the calibrated scores), `data/processed/tuning/`
 (the method-selection log), `data/processed/calibration/` (the calibrators and their
 diagnostics — a sixth processed layer)
-**Consumed by:** Component 5 (`sentinel evaluate --predictions`); Component 10 onwards, which
-should start from the calibrated scores rather than from Components 6–8's raw ones
+**Consumed by:** Component 5 (`sentinel evaluate --predictions`); Component 12
+(`sentinel audit-fairness`), which reads `score` and `base_score` **from the same row** — that
+is what lets a group's calibrated and uncalibrated behaviour be compared with no join, and it
+is why the group audit needs this artifact rather than Components 6–8's; Component 13 onwards,
+which should start from the calibrated scores rather than from Components 6–8's raw ones
 **Design rationale:** ADR 0012 (why a calibration window exists), ADR 0014 (predictions are
 outputs), ADR 0024 (where these tables live), ADR 0025 (the selection protocol, pre-registered),
 ADR 0026 (why the base models were re-executed), ADR 0027 (what the calibrator is fed)

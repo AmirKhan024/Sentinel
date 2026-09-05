@@ -1,0 +1,166 @@
+{
+  "artifacts": [
+    {
+      "bytes": 43003,
+      "path": "tuning_trials_20260817T155315Z.parquet",
+      "row_count": 400,
+      "schema": {
+        "boosting_definition_version": "String",
+        "failed": "Boolean",
+        "failure": "String",
+        "fold_set": "String",
+        "inner_fold_pr_aucs": "String",
+        "inner_folds": "Int32",
+        "mean_pr_auc": "Float64",
+        "model_name": "String",
+        "n_estimators": "Int32",
+        "params": "String",
+        "region_end": "Date",
+        "region_start": "Date",
+        "sampler_seed": "Int32",
+        "seconds": "Float64",
+        "study": "String",
+        "trial": "Int32"
+      },
+      "sha256": "a77687b7e56e34954b3463c64a071b3708ba2220b613efe041cd5235adec8b14"
+    }
+  ],
+  "best_params": {
+    "lightgbm-covid_shift": "bagging_fraction=0.6320623097532436, bagging_freq=1, feature_fraction=0.8934942988225112, lambda_l1=1.4203794299154232e-05, lambda_l2=0.2919393588867272, learning_rate=0.057811212728145885, max_depth=8, min_child_samples=44, n_estimators=54, num_leaves=10",
+    "lightgbm-quarterly": "bagging_fraction=0.7781136640014453, bagging_freq=1, feature_fraction=0.6046947274523935, lambda_l1=0.00021894473605833144, lambda_l2=7.095252963920867e-07, learning_rate=0.2992200240188712, max_depth=4, min_child_samples=54, n_estimators=63, num_leaves=16",
+    "xgboost-covid_shift": "colsample_bytree=0.6173166616787783, learning_rate=0.05598704173922894, max_depth=3, min_child_weight=2.649550642462423, n_estimators=192, reg_alpha=1.994200257477126e-07, reg_lambda=0.02981913787127491, subsample=0.762140912352976",
+    "xgboost-quarterly": "colsample_bytree=0.668974715332733, learning_rate=0.1926324953901243, max_depth=4, min_child_weight=12.607179102564166, n_estimators=103, reg_alpha=1.0910568566546592e-08, reg_lambda=0.005889806219464979, subsample=0.7877818882255597"
+  },
+  "best_scores": {
+    "lightgbm-covid_shift": 0.777717,
+    "lightgbm-quarterly": 0.603331,
+    "xgboost-covid_shift": 0.778605,
+    "xgboost-quarterly": 0.605436
+  },
+  "blas_threads": "unset (library default; estimators pinned to n_jobs=1)",
+  "blocked": [
+    "inspector-effect modelling and inspector marginalisation: the Chicago food inspections dataset publishes 22 columns and none identifies an inspector. A mixed-effects model with inspector as a random intercept, and any marginalisation over an inspector effect, are undefined without that field -- so neither is approximated by a proxy. See ADR 0019",
+    "probability calibration: boosted probabilities are emitted raw and uncorrected. Platt scaling, isotonic regression and any operating threshold belong to Component 9, which is why the calibration window is left untouched by every fit here",
+    "SHAP attribution: Component 7 emits native split-gain importances as a diagnostic only. Attribution is Component 11's, and a condition number of 71.8 with one feature pair correlated at 0.9888 makes tree importances a poor substitute for it",
+    "ensembling xgboost with lightgbm or with the Component 6 logistic model: stacking and rank averaging come after the individual model stages, and blending before each member is understood would hide which one is carrying the result"
+  ],
+  "boosting_definition_version": "v1",
+  "built_at": "2026-08-17T15:53:15.645096+00:00",
+  "checks": [
+    {
+      "detail": "all 4 study region(s) end strictly before their fold set's first test window",
+      "name": "tuning_never_reached_a_test_window",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every study's inner folds sit inside a well-formed region that ends before its fold set's first test window",
+      "name": "inner_folds_are_ordered_and_disjoint_from_test",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 4 study/studies produced at least one scored trial",
+      "name": "every_study_produced_a_score",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every study searched exactly the region its own fold set implies",
+      "name": "no_study_borrowed_another_fold_sets_region",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every frozen round count is within 1..2000",
+      "name": "round_counts_are_bounded",
+      "passed": "True",
+      "severity": "error"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "boosting_tuning",
+  "early_stopping_rounds": 50,
+  "failed_trials": 0,
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "first_test_start": {
+    "covid_shift": "2020-06-01",
+    "quarterly": "2022-04-01"
+  },
+  "inner_folds": {
+    "lightgbm-covid_shift": [
+      "tuning-covid_shift-2019Q4",
+      "tuning-covid_shift-2020Q1"
+    ],
+    "lightgbm-quarterly": [
+      "tuning-quarterly-2020Q4",
+      "tuning-quarterly-2021Q1",
+      "tuning-quarterly-2021Q2",
+      "tuning-quarterly-2021Q3",
+      "tuning-quarterly-2021Q4",
+      "tuning-quarterly-2022Q1"
+    ],
+    "xgboost-covid_shift": [
+      "tuning-covid_shift-2019Q4",
+      "tuning-covid_shift-2020Q1"
+    ],
+    "xgboost-quarterly": [
+      "tuning-quarterly-2020Q4",
+      "tuning-quarterly-2021Q1",
+      "tuning-quarterly-2021Q2",
+      "tuning-quarterly-2021Q3",
+      "tuning-quarterly-2021Q4",
+      "tuning-quarterly-2022Q1"
+    ]
+  },
+  "lightgbm_version": "4.7.0",
+  "max_boosting_rounds": 2000,
+  "numpy_version": "2.5.2",
+  "objective": "mean PR-AUC across temporally ordered inner validation windows, each strictly later than its own inner training window and all strictly earlier than the fold set's first test window",
+  "optuna_version": "4.9.0",
+  "sampler": "optuna.samplers.TPESampler",
+  "sampler_seed": 20260817,
+  "seconds_total": 563.81,
+  "studies": [
+    {
+      "fold_set": "covid_shift",
+      "model": "xgboost",
+      "seconds": "72.563",
+      "study": "xgboost-covid_shift",
+      "trials": "100"
+    },
+    {
+      "fold_set": "quarterly",
+      "model": "xgboost",
+      "seconds": "314.106",
+      "study": "xgboost-quarterly",
+      "trials": "100"
+    },
+    {
+      "fold_set": "covid_shift",
+      "model": "lightgbm",
+      "seconds": "24.656",
+      "study": "lightgbm-covid_shift",
+      "trials": "100"
+    },
+    {
+      "fold_set": "quarterly",
+      "model": "lightgbm",
+      "seconds": "152.421",
+      "study": "lightgbm-quarterly",
+      "trials": "100"
+    }
+  ],
+  "trial_rows": 400,
+  "trials_requested": 100,
+  "tuning_regions": {
+    "lightgbm-covid_shift": "2018-07-01..2020-05-31",
+    "lightgbm-quarterly": "2018-07-01..2022-03-31",
+    "xgboost-covid_shift": "2018-07-01..2020-05-31",
+    "xgboost-quarterly": "2018-07-01..2022-03-31"
+  },
+  "xgboost_version": "3.4.1"
+}

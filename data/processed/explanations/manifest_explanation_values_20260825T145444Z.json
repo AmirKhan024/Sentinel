@@ -1,0 +1,438 @@
+{
+  "additivity_tolerance": {
+    "linear_shap": 1e-10,
+    "permutation_shap": 1e-06,
+    "tree_shap": 1e-05
+  },
+  "artifacts": [
+    {
+      "bytes": 915035,
+      "path": "explanation_cases_20260825T145444Z.parquet",
+      "row_count": 21600,
+      "schema": {
+        "additivity_holds": "Boolean",
+        "additivity_tolerance": "Float64",
+        "background_max_date": "Date",
+        "background_seed": "Int64",
+        "background_size": "Int64",
+        "background_strategy": "String",
+        "base_model_trained_through": "Date",
+        "base_score": "Float64",
+        "base_score_reproduced": "Boolean",
+        "base_value": "Float64",
+        "calibrated_probability": "Float64",
+        "calibration_method": "String",
+        "calibrator_fitted_through": "Date",
+        "explain_definition_version": "String",
+        "explanation_method": "String",
+        "family": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_exact": "Boolean",
+        "model_name": "String",
+        "model_version": "String",
+        "n_features": "Int64",
+        "negative_contribution_sum": "Float64",
+        "output_space": "String",
+        "permutation_rounds": "Int64",
+        "population_rows": "Int64",
+        "positive_contribution_sum": "Float64",
+        "prediction_available_from": "Date",
+        "prediction_value": "Float64",
+        "reconstruction_residual": "Float64",
+        "reconstruction_value": "Float64",
+        "sample_size": "Int64",
+        "sample_strategy": "String",
+        "sampling_population": "String",
+        "sampling_seed": "Int64",
+        "target_inspection_id": "String"
+      },
+      "sha256": "cdda11d6d82147c7f86e227814ebce1c1a8437788be804a3183bff964868ba98"
+    },
+    {
+      "bytes": 10376,
+      "path": "explanation_drift_20260825T145444Z.parquet",
+      "row_count": 120,
+      "schema": {
+        "best_rank": "Int64",
+        "coefficient_of_variation": "Float64",
+        "feature_name": "String",
+        "first_fold_id": "String",
+        "first_rank": "Int64",
+        "fold_set": "String",
+        "last_fold_id": "String",
+        "last_rank": "Int64",
+        "materially_changed": "Boolean",
+        "mean_abs_shap": "Float64",
+        "model_name": "String",
+        "original_feature_name": "String",
+        "rank_range": "Int64",
+        "sd_abs_shap": "Float64",
+        "worst_rank": "Int64"
+      },
+      "sha256": "5e8a43946b191fb3a7e789b95aa78406821987f14087e361f6b380348e1035a1"
+    },
+    {
+      "bytes": 44318,
+      "path": "explanation_importance_20260825T145444Z.parquet",
+      "row_count": 2400,
+      "schema": {
+        "best_rank": "Int64",
+        "feature_name": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "folds": "Int64",
+        "mean_abs_shap": "Float64",
+        "mean_rank": "Float64",
+        "mean_shap": "Float64",
+        "model_name": "String",
+        "original_feature_name": "String",
+        "rank": "Int64",
+        "rows": "Int64",
+        "scope": "String",
+        "sd_abs_shap": "Float64",
+        "sd_rank": "Float64",
+        "worst_rank": "Int64"
+      },
+      "sha256": "9e2827134147e9318b1b9e7b0dd27e620b50d4db63282dcee6f39bf481509b72"
+    },
+    {
+      "bytes": 5586,
+      "path": "explanation_representative_cases_20260825T145444Z.parquet",
+      "row_count": 12,
+      "schema": {
+        "base_score": "Float64",
+        "base_value": "Float64",
+        "calibrated_probability": "Float64",
+        "calibration_method": "String",
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_exact": "Boolean",
+        "method": "String",
+        "model_name": "String",
+        "output_space": "String",
+        "prediction_value": "Float64",
+        "quantile": "Float64",
+        "target_inspection_id": "String",
+        "tier": "String"
+      },
+      "sha256": "20c66f5783eda63bf66a7d579f2f8058c28849fe1744e549287ee0bf4841134f"
+    },
+    {
+      "bytes": 4492,
+      "path": "explanation_stability_20260825T145444Z.parquet",
+      "row_count": 68,
+      "schema": {
+        "comparison": "String",
+        "features": "Int64",
+        "fold_set": "String",
+        "from_fold_id": "String",
+        "model_name": "String",
+        "spearman_rho": "Float64",
+        "to_fold_id": "String",
+        "top_k": "Int64",
+        "top_k_jaccard": "Float64"
+      },
+      "sha256": "294c7face327d1abac61d746fa4b7927d888343dcf1a861f317b0fb126d795db"
+    },
+    {
+      "bytes": 7925,
+      "path": "explanation_support_20260825T145444Z.parquet",
+      "row_count": 5,
+      "schema": {
+        "attribution_values": "Int64",
+        "component": "Int64",
+        "explained_rows": "Int64",
+        "explanation_method": "String",
+        "explanation_status": "String",
+        "family": "String",
+        "is_exact": "Boolean",
+        "is_experimental": "Boolean",
+        "model_name": "String",
+        "model_version": "String",
+        "name_source": "String",
+        "output_space": "String",
+        "rationale": "String",
+        "source_slug": "String",
+        "unsupported_reason": "String"
+      },
+      "sha256": "776a3450ff42208fcb09862e79fef3a430b1d8792be62555c5d4c919e7ddc8eb"
+    },
+    {
+      "bytes": 4632415,
+      "path": "explanation_values_20260825T145444Z.parquet",
+      "row_count": 648000,
+      "schema": {
+        "base_value": "Float64",
+        "derived_from": "String",
+        "explain_definition_version": "String",
+        "explanation_method": "String",
+        "family": "String",
+        "feature_kind": "String",
+        "feature_name": "String",
+        "feature_value": "Float64",
+        "fold_id": "String",
+        "fold_set": "String",
+        "is_exact": "Boolean",
+        "model_name": "String",
+        "model_version": "String",
+        "original_feature_name": "String",
+        "output_space": "String",
+        "prediction_value": "Float64",
+        "shap_value": "Float64",
+        "target_inspection_id": "String",
+        "trained_through": "Date",
+        "transformed_value": "Float64"
+      },
+      "sha256": "316ee3873f52734427cb69c5a118f7cf77ba43b688d440f2d35b74b0116ba2c0"
+    }
+  ],
+  "attribute_seconds_total": 647.28,
+  "attribution_semantics": "a shap_value is the contribution of one feature to one prediction's log-odds, relative to base_value, under the method named in explanation_method. It describes how the model used the feature. It is not a measurement of the feature's effect on food safety and not an estimate of what would happen if the feature changed.",
+  "attribution_values": 648000,
+  "background_seed": 20260826,
+  "background_size": 64,
+  "background_strategy": "uniform without replacement from the fold's training window as defined by modeling.train.training_frame, under a frozen seed; every row is dated on or before fold.train_end by construction, and validate re-derives that from the frame rather than trusting it",
+  "baseline_predictions_path": "baseline_predictions_20260817T142118Z.parquet",
+  "baseline_predictions_sha256": "a2bb94113bcc1c93ee913a06d30c0289c1724cc28f9d4669a5c194a100ff5b44",
+  "blas_threads": "unset (library default)",
+  "blocked": [
+    "attribution over the learned embedding: Component 8's own BLOCKED list says the embedding tables are a representation rather than an explanation. Nothing here contradicts that, and the one model that consumes them is unsupported for an unrelated reason.",
+    "causal interpretation: a SHAP value states how the model used a feature. It does not state that changing the feature would change the outcome, and no artifact, figure or sentence this component emits may be read that way.",
+    "explaining the calibrated probability directly: Platt is a monotone two-parameter map applied after the fact. Attributions are computed on the base model's log-odds and the calibrated probability is carried alongside; pretending SHAP decomposed the calibrated number would misdescribe which model was explained. ADR 0030.",
+    "interaction values: TreeSHAP can emit an [n, M, M] interaction tensor and both boosters support it. Not computed: it is 30x the storage for a question nobody has asked yet, and the two models that could produce one are not the two the project is likeliest to deploy. A later component can add it without changing anything here.",
+    "model selection: Component 11 may not name a winner. Explainability is diagnostic evidence about how a model reasons; it does not measure whether the reasoning is right, and Components 5 to 9 own that question. A model chosen because its attributions looked tidier would have been chosen on legibility.",
+    "recalibration: the calibrators are frozen per (model, fold). This component reads base_score and the calibrated probability side by side and fits nothing."
+  ],
+  "boosted_predictions_path": "boosted_predictions_20260817T160354Z.parquet",
+  "boosted_predictions_sha256": "c8fcbd098f19650bc66434620ef97d2026af60318884d72282ecfa91c6ae66f3",
+  "built_at": "2026-08-25T14:54:44.608998+00:00",
+  "calibrated_predictions_path": "calibrated_predictions_20260824T163608Z.parquet",
+  "calibrated_predictions_sha256": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+  "calibration_boundary": "attributions decompose the BASE model's log-odds output, not Component 9's calibrated probability. Platt is a monotone two-parameter map applied afterwards; it changes the number a user is shown and changes no ranking. base_score and calibrated_probability are carried side by side on explanation_cases so the two can be connected without either being mistaken for the other. ADR 0030.",
+  "causality_disclaimer": "predictive importance is not causality. A feature can carry a large attribution because it proxies something the model cannot see, because it encodes a scheduling policy, or because it is correlated with a feature that matters. Component 7 measured a condition number of 71.8 with one feature pair correlated at 0.9888, so attributions are shared between correlated features in a way no SHAP value discloses. Nothing in this artifact supports an intervention claim.",
+  "checks": [
+    {
+      "detail": "166144/166144 re-executed test scores are bit-identical to the committed Component 6/7/8 artifacts across 72 (model, fold) pairs",
+      "name": "regenerated_scores_reproduce_the_committed_artifact",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "4/4 prediction artifacts have the same sha256 after the run as before it",
+      "name": "committed_prediction_artifacts_are_unchanged",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "21600/21600 explained predictions appear in a committed prediction artifact",
+      "name": "every_explanation_maps_to_a_committed_prediction",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "21600/21600 recorded base scores equal the committed artifact's score exactly",
+      "name": "prediction_values_match_the_committed_scores",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every explanation row names a registered model at its registered version and family",
+      "name": "model_identity_is_preserved",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every explained fold_id maps to its declared fold_set across 18 folds",
+      "name": "explanations_belong_to_their_prediction_fold",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "5400/5400 explained rows sit inside the test window their fold defines, across 18 (model-shared) samples",
+      "name": "explained_rows_lie_in_the_test_window",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "30 distinct feature names, all present in Component 4's contract or its null-rule indicator set, none anonymous",
+      "name": "every_feature_maps_to_a_known_representation",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "all 72 re-executed fits name their columns with the function their registry entry declares",
+      "name": "feature_names_match_the_declared_name_source",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "648000 value rows and 21600 case rows are each uniquely keyed",
+      "name": "no_duplicate_explanation_keys",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "4 supported model(s) x 18 folds all present",
+      "name": "every_supported_model_covers_every_fold",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "21600/21600 decompositions reconstruct their model output within the method's frozen tolerance; worst residual 1.662e-06",
+      "name": "additivity_reconstructs_the_model_output",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "648000/648000 attribution rows carry finite values",
+      "name": "shap_values_are_finite",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "every row declares one of ['log_odds']; observed ['log_odds']",
+      "name": "output_space_labels_are_declared",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "1152 background rows across 18 fold(s) are all dated on or before their fold's train_end",
+      "name": "background_rows_precede_the_training_horizon",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "1152 background rows are all members of their fold's training window as modeling.train.training_frame defines it",
+      "name": "background_is_drawn_from_the_training_window",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "1 unsupported model(s) carry no values, no cases and a stated reason",
+      "name": "unsupported_models_carry_no_attributions",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "120 quarterly and 120 covid_shift aggregate rows are computed within their own fold set; no aggregate row spans both",
+      "name": "covid_shift_is_never_pooled_into_a_quarterly_aggregate",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "4/4 representative triples are ordered low <= medium <= high by the model's own committed score",
+      "name": "representative_cases_are_ordered_by_predicted_risk",
+      "passed": "True",
+      "severity": "error"
+    },
+    {
+      "detail": "30/30 feature representations received a non-zero attribution from at least one model on at least one fold",
+      "name": "every_feature_was_used_somewhere",
+      "passed": "True",
+      "severity": "warn"
+    }
+  ],
+  "code_version": "0.1.0",
+  "component": "explainability",
+  "covid_reported_separately": true,
+  "determinism_caveat": "identical output for a fixed feature table, a fixed row order, this library set, one torch thread and CPU. Not across library versions: a bump makes the bit-identity gate fail, which is the correct behaviour and an explicit re-baseline. Run without an OMP_NUM_THREADS override -- a different BLAS thread count is a different float summation order, and ADR 0026 records it moving logistic_regression scores by 1e-13.",
+  "device": "cpu",
+  "exactness": {
+    "lightgbm": true,
+    "logistic_regression": true,
+    "neural_numeric_only": false,
+    "xgboost": true,
+    "xgboost_chain_embeddings": false
+  },
+  "explain_definition_version": "v1",
+  "explained_rows": 21600,
+  "explanation_methods": {
+    "lightgbm": "tree_shap",
+    "logistic_regression": "linear_shap",
+    "neural_numeric_only": "permutation_shap",
+    "xgboost": "tree_shap"
+  },
+  "feature_definition_version": "v1",
+  "feature_rows": 57727,
+  "features_path": "as_of_features_20260816T150313Z.parquet",
+  "features_sha256": "b7db5b2d3d25bf4ccd251a8614aa08f1167cadcbe86d6c6788d665e745825e2f",
+  "fold_sets": {
+    "covid_shift": 1,
+    "quarterly": 17
+  },
+  "folds": 18,
+  "lightgbm_version": "4.7.0",
+  "max_additivity_residual": {
+    "linear_shap": 1.4210854715202004e-14,
+    "permutation_shap": 0.0,
+    "tree_shap": 1.6622943803668022e-06
+  },
+  "name_sources": {
+    "lightgbm": "boosting.preprocess.matrix_columns",
+    "logistic_regression": "modeling.preprocess.ordered_matrix_columns",
+    "neural_numeric_only": "neural.preprocess.transformed_columns",
+    "xgboost": "boosting.preprocess.matrix_columns",
+    "xgboost_chain_embeddings": "neural.embed.augmented_columns"
+  },
+  "neural_predictions_path": "neural_predictions_20260818T134648Z.parquet",
+  "neural_predictions_sha256": "a707a650b275da9652a95dbb83f053dc1504bb16d9f643f95a4ff8515cc47cf9",
+  "numpy_version": "2.5.2",
+  "output_spaces": {
+    "lightgbm": "log_odds",
+    "logistic_regression": "log_odds",
+    "neural_numeric_only": "log_odds",
+    "xgboost": "log_odds"
+  },
+  "permutation_rounds": 8,
+  "prediction_artifacts_unchanged": true,
+  "prediction_sha256_after": {
+    "baseline_predictions_20260817T142118Z.parquet": "a2bb94113bcc1c93ee913a06d30c0289c1724cc28f9d4669a5c194a100ff5b44",
+    "boosted_predictions_20260817T160354Z.parquet": "c8fcbd098f19650bc66434620ef97d2026af60318884d72282ecfa91c6ae66f3",
+    "calibrated_predictions_20260824T163608Z.parquet": "4548d3a8d09607bc519b1e5b043f59f44636d5c79fe106ab07aa5e7ed9379c8c",
+    "neural_predictions_20260818T134648Z.parquet": "a707a650b275da9652a95dbb83f053dc1504bb16d9f643f95a4ff8515cc47cf9"
+  },
+  "rank_drift_threshold": 5,
+  "refit_seconds_total": 438.59,
+  "refits": 72,
+  "representative_quantiles": {
+    "high": 0.9,
+    "low": 0.1,
+    "medium": 0.5
+  },
+  "reproduction_mismatches": {
+    "lightgbm": 0,
+    "logistic_regression": 0,
+    "neural_numeric_only": 0,
+    "xgboost": 0
+  },
+  "reproduction_passed": true,
+  "reproduction_rows": {
+    "lightgbm": 41536,
+    "logistic_regression": 41536,
+    "neural_numeric_only": 41536,
+    "xgboost": 41536
+  },
+  "sample_size": 300,
+  "sample_strategy": "uniform without replacement from the fold's test window, sorted canonically by (rd, target_inspection_id) before drawing, under a frozen seed; identical ids for every model; no label, outcome or score participates in the selection",
+  "sampling_population": "fold test window",
+  "sampling_seed": 20260825,
+  "sklearn_version": "1.9.0",
+  "stability_metrics": [
+    "spearman rank correlation of mean_abs_shap ranks, ties averaged",
+    "top-10 Jaccard overlap of the highest mean_abs_shap features"
+  ],
+  "supported_models": [
+    "logistic_regression",
+    "xgboost",
+    "lightgbm",
+    "neural_numeric_only"
+  ],
+  "top_k": 10,
+  "torch_threads": 1,
+  "torch_version": "2.13.0+cpu",
+  "unsupported_models": {
+    "xgboost_chain_embeddings": "the fitted booster is reachable only through neural.embed._scorer_for, a private process-local stash; FittedEmbeddingBooster has 19 fields and none of them is the estimator, and no public neural.embed function returns it. Component 8 is closed, so Component 11 does not reach into a private helper to explain this model. The minimal public extension that would lift the restriction -- embed.booster_for(fitted) -- is proposed in ADR 0031 and deliberately not taken here."
+  },
+  "xgboost_version": "3.4.1"
+}

@@ -9,8 +9,8 @@ see README.md for that and STATUS.md for current state.
 
 ## Working agreement
 
-* **One component at a time.** 21 components are planned; Components 1-7
-  exist. Never implement ahead. If something belongs to a later component,
+* **One component at a time.** 21 components are planned; Components 1-9 and 11-13
+  exist (10 is blocked by ADR 0019). Never implement ahead. If something belongs to a later component,
   write it down as a TODO or an architectural note instead of building it.
 * **No fake completion.** Never claim tests pass, ingestion works, or a schema
   is what it is, without having run the command. Anything unverified must be
@@ -453,6 +453,361 @@ see README.md for that and STATUS.md for current state.
     quarters) is a DESIGN PROPOSAL**, written after seeing the drift series and validated
     against nothing. Unlike the tie rule, it selects nothing, which is why it was allowed to
     be written afterwards.
+
+---
+
+### Component 11 invariants — an EXPLANATION has a horizon too
+
+94. **The BACKGROUND is part of the explanation, and is the leakage surface.** A SHAP value
+    says how far a feature moved the output *relative to a reference set*. Drawn from the
+    test window it would encode the period the model is being judged on - and every value
+    would stay finite, additive and plausible. Nothing raises. Reference rows come from
+    `modeling.train.training_frame` ONLY, and TWO checks re-derive it: one on dates, one on
+    split membership, because a date comparison is weaker than the split.
+95. **Additivity is NOT accuracy for the permutation method.** Its path telescopes to
+    `f(row) - f(background)`, so `base + sum(phi)` reconstructs the output exactly at ONE
+    round. Measured residual **0.0 at every round count from 1 to 64**. A green additivity
+    check proves the arithmetic, never the credit split. Say this out loud whenever anyone
+    reads a passing check as evidence the values are right.
+96. **What IS approximate is measured, and the global statistic converges much faster than
+    any single value.** At 8 rounds vs a 64-round reference: median per-value error 1.00%,
+    global importance rank rho **0.9964**. So the network's global ranking is quotable and
+    its per-row values are not, and every neural row carries `is_exact = false`.
+97. **Components 6 and 7 order the same 30 columns differently at 19 OF 30 POSITIONS.**
+    `ordered_matrix_columns` (C6, ColumnTransformer branch order) vs `matrix_columns` (C7,
+    natural order). Picking wrong produces a table whose every value is arithmetically
+    correct and attached to the WRONG FEATURE - no exception, no failed additivity check,
+    because a sum is invariant to a permutation of its terms. The choice is per-model in
+    `EXPLAIN_REGISTRY.name_source` and re-derived independently by a check.
+98. **SHAP explains the BASE score, never the calibrated probability.** Platt is a separate
+    two-parameter monotone map. `explanation_cases` carries `base_score` and
+    `calibrated_probability` side by side so a user sees both and neither is mistaken for
+    the other. ADR 0030.
+99. **One output space: log-odds.** Contributions add up in the margin and NOT in
+    probability, because sigmoid is not linear. `OutputSpace` declares one member;
+    probability space is refused in prose rather than declared-and-unreachable.
+100. **`shap` is DEV-ONLY, and no runtime dependency was added.** xgboost and lightgbm ship
+    exact TreeSHAP (`pred_contribs` / `pred_contrib`); linear SHAP is
+    `coef_j * (z_j - E[z_j])`. Only the network needed an approximation. Measured agreement
+    with the oracle: **0.0**. Same pattern as C5's metrics vs sklearn. `shap` needs
+    `numba>=0.67` and `llvmlite>=0.49` pinned or the resolver breaks numpy 2.5.2 - which is
+    what ADR 0026's gate is baselined on.
+101. **Component 11 re-executes the frozen fits, under ADR 0026's gate, calling C9's
+    comparison rather than reimplementing it.** 166,144 test rows, `==`, zero mismatches,
+    build RAISES before computing a single attribution if it fails. One definition of "the
+    same model" in the project, not two. ADR 0029.
+102. **`xgboost_chain_embeddings` is UNSUPPORTED, and its rows are NULL not 0.0.** Its
+    booster is reachable only via `neural.embed._scorer_for`, private; `neural.train.
+    scorer_for` is public, which is the only reason the network could be explained. Zero is a
+    legitimate attribution meaning "did not move the score", so placeholder zeros would read
+    as a model that used no features. ADR 0031 proposes `embed.booster_for` and does not add
+    it.
+103. **Component 11 MUST NOT select a model**, and is recorded as blocked from doing so in
+    every manifest it emits. Attribution describes reasoning, not correctness - a model can
+    lean hard on a feature that is misleading it, which C6 measured happening under shift.
+104. **An attribution is keyed by `target_inspection_id`, so joining it back onto a feature
+    table is ONE LINE AWAY** and would be a model's own reasoning about a row becoming a
+    feature of that row. The sharpest never-join rule in the project. ADR 0028.
+
+---
+
+### Component 12 invariants — a GROUP LABEL must not see the future either
+
+105. **The attribute a row is audited under comes from an inspection STRICTLY EARLIER than
+    that row.** This is the quietest leak in the project. A leaked feature makes one column
+    wrong; a leaked group label leaves every number finite, additive, plausible and in range
+    and changes only *which neighbourhood the number is about*. Nothing raises.
+    `groups.check_temporal_validity` re-derives the inequality per row rather than reading
+    Component 8's manifest, and `CANONICAL_SORT` is applied before any metric touches the
+    frame. Measured minimum lag: **1 day**.
+106. **The as-of geography and the row's own recorded geography NEVER disagree** — 0 of 57,041
+    community-area rows, 0 of 57,326 ZIP rows. A restaurant does not move, so the temporally
+    safe choice cost nothing. That is why it was taken, rather than on principle. ADR 0033.
+107. **WARD IS REFUSED, and the dataset is the evidence.** The snapshot publishes two ward
+    layers and they assign different region ids to **56,451 of 57,403** rows (98.3%). A ward
+    id is a property of a boundary VERSION, not of a place. Census tract (797 groups over
+    32,696 rows), point geography and city/state (312,957 of 314,245 say CHICAGO) are refused
+    too. **The refusals are ROWS in `fairness_group_definitions`**, so they keep travelling
+    when someone opens the Parquet instead of the ADR.
+108. **`community_area` is a Socrata computed-region id, NOT the official community-area
+    number.** No boundary file is ingested, so **no neighbourhood is named anywhere** in the
+    artifact. Guessing the mapping would attribute a measured disparity to the wrong
+    neighbourhood in the one document whose purpose is to be trusted about which neighbourhood.
+109. **Support is decided BEFORE any metric, and the per-fold grain does not survive it.**
+    Median (fold, community area) cell: **16 rows**; 4 of 1,288 clear the 200-row floor. The
+    reporting grain is the pooled fold set — legitimate (every row still held out) but
+    labelled on every row as *the system as operated over 2022Q2-2026Q2*, because the 17
+    windows were scored by 17 differently-fitted models.
+110. **Floors frozen from the profiler before any result: 200 rows / 20 positives / 20
+    negatives for ranking, 300 for calibration.** 300 is arithmetic, not taste: 15 equal-mass
+    bins x 20 rows. **The bin count was NOT reduced** to let 18 more community areas through,
+    because a group ECE at a different bin count is incomparable with Component 9's global one
+    — which is the exact comparison the component exists to make. ADR 0034.
+111. **An unsupported group is a ROW with real counts, a null value and a stated reason. Never
+    an absent row.** `validate.no_group_disappeared` compares the support table against the
+    values observed in the data. "Equal performance across groups" may never rest on the
+    groups that were dropped, and 27 of 78 community areas were below the floor.
+112. **`__UNKNOWN__` IS A GROUP, not a null.** It is a superset of the rows with no prior
+    inspection of any type — the same rows the null-rule indicators fire on — so dropping it
+    would delete the most interesting row set from a missingness audit. It turned out to be
+    the component's sharpest finding.
+113. **A MEASURED DISPARITY IS ADVISORY AND CAN NEVER FAIL THE BUILD, and there is no flag to
+    change that.** 13 error checks are about the audit's integrity; 3 advisories are about the
+    world. A red build is a demand for action, and the actions available are to change the
+    model, the metric or the threshold — two of which are worse than the disparity.
+    `test_an_enormous_disparity_is_advisory_and_never_an_error` asserts a 0.95 ECE spread
+    leaves every error check green and exit code 0. ADR 0034.
+114. **There is deliberately NO single fairness score.** Calibration parity and selection-rate
+    parity cannot both hold when base rates differ, and they differ by 34 points here. Four
+    disparity measures are reported side by side; every ratio is measured against the **pooled
+    population**, never a nominated group.
+115. **Selection rate and capture rate are NEVER combined.** Representation ("was this group
+    prioritised?") and effectiveness ("did that find its violations?") are different questions,
+    and a group can be prioritised often and still have its violations missed. Capture is also
+    NOT `recall_at_k`: the cutoff is city-wide and competitive, so capture is what a
+    competition against every other group left a group.
+116. **Component 12 re-executes NOTHING — the first component of which that is true.** Its
+    integrity claim is the opposite of ADR 0026's: **nothing moved**. Every input's sha256 is
+    read before and again after the last write, and a difference is an error. No gate, no
+    refit, no BLAS thread sensitivity — run it with any thread count.
+117. **Polars aggregates in parallel and float summation order is not stable.** Two runs
+    produced `mean_abs_shap` differing at **4.4e-16** (every rank, correlation and count
+    identical). Fixed by sorting before aggregating. **A table that is *nearly* reproducible is
+    a table whose two-run checksum comparison has stopped being a detector.**
+118. **`ece` uses equal-mass bins, so rows tied at a bin boundary are assigned by ARRIVAL
+    ORDER.** Shuffling the prediction rows changed the pooled reference value and therefore
+    every disparity, until `groups.CANONICAL_SORT` was added. Found by a test, not by reading.
+119. **Component 9 and Component 11 name the same model differently** — `xgboost_platt` vs
+    `xgboost`. Looking a profile up under the calibrated name found nothing and drew no
+    figure: **a missing figure looks exactly like a figure the data could not support.**
+    `figures.base_model_name` is the one place that translation lives.
+120. **Component 12 MUST NOT select a model**, and is recorded as blocked from doing so in
+    every manifest. It made open question 13 harder, not easier: the best-NDE model
+    (`neural_numeric_only`) is the one whose calibration reached the fewest groups.
+121. **Nothing in `data/processed/fairness/` may be joined onto a feature table.** These tables
+    are keyed by GROUP rather than by row, which is what stops them becoming features — and a
+    number meaning "the model was well calibrated in this neighbourhood last quarter",
+    broadcast back onto training rows, would be the most self-fulfilling input this project
+    could construct. ADR 0032.
+122. **A green run means the audit is SOUND, not that Sentinel is FAIR.** `does_not_establish`
+    travels in every manifest and prints on every run: not causality, not discrimination, not
+    the absence of bias, not legal compliance, not ethical acceptability, not equal treatment,
+    not an optimal fairness policy. ADR 0035.
+123. **ADR 0019's gap is INHERITED, not discovered.** The target is that a violation was
+    *cited*, and Chicago assigns inspectors by district — so geography is close to the
+    strongest available proxy for who inspected, and **nothing in this project separates
+    establishment risk from differential inspection practice.**
+
+### Component 13 invariants — a POLICY must not see the future, or the model's own past
+
+124. **Eligibility reads ONE as-of column and no outcome column.** `coverage_eligible <=>
+    prior_canvass_count_code_era == 0`, a Component 4 feature built under ADR 0010.
+    `eligibility.refuse_forbidden` raises before the predicate is built if `target` or
+    `target_status` is offered, and no decision table carries a label column at all — so a
+    future edit that wanted one would have to change the contract to get it.
+125. **A NULL history count is NEVER eligible.** The column carries `NullRule.NEVER`, so a zero
+    is a real observation of no history and a null means the count itself is missing. `fill_null(-1)`,
+    never `fill_null(0)`: mapping a null to eligible would reserve capacity for rows a join
+    quietly failed to match.
+126. **NO Component 12 number reaches a rank.** The group label and support status are read
+    *onto* recommendation rows and never back into a decision. Those numbers are computed from
+    held-out outcomes, so ranking on one would be ranking on the future — and the artifact would
+    look completely normal. `_queue_signature` rebuilds the whole queue with both withheld and
+    `validate.warnings_do_not_change_the_queue` compares ranks exactly. The end-to-end test runs
+    the entire component twice, with and without the group artifacts.
+127. **NO SCORE IS WRITTEN ANYWHERE IN COMPONENT 13.** `allocation.py` reads scores to order
+    rows and writes none. `base_score` and `score` are copied verbatim from Component 9. ADR 0037:
+    once a score is adjusted, nobody can say whether an establishment is in the queue because the
+    model thinks it is risky or because a policy promoted it.
+128. **`model_rank` sits beside `final_policy_rank` on every row.** Where they agree the model
+    decided; where they differ the policy did, and `decision_mechanism` names which mechanism
+    moved it. That pair is the component's whole design.
+129. **Capacity is a RANK POSITION, never a probability.** Every cutoff descends from
+    `simulate.capacity_k_values` and the window's own measured median daily rate. No probability
+    threshold exists and there is no flag to add one — refused by Component 12 in prose and by
+    Component 13 in `CAPACITY_SEMANTICS`.
+130. **`reserve_target = floor(share * k)`, truncated.** A reserve may never spend more than the
+    share it declared. The consequence is that a small share at a small cutoff floors to zero
+    slots, reported as an advisory rather than rounded away — a policy that quietly overspends
+    its own budget is worse than one that is visibly inert.
+131. **The two mechanisms are disjoint BY CONSTRUCTION**: the reserve is filled from rows the
+    risk block did not take. Checked anyway, because "by construction" is a claim about code that
+    was correct when it was written.
+132. **Advisories NEVER fail a build, and there is no flag to change that.** ADR 0034's line,
+    inherited and sharper here: the cheapest way to make a red "this reserve gave up 34
+    citations" build green is to delete the reserve, and that is a decision about how a city
+    allocates enforcement rather than a defect a CI runner may fix. Five tests assert the
+    opposite of every red test for exactly this reason.
+133. **The determinism claim is SCOPED to the inputs including the override file.** Human
+    overrides are external decisions; the manifest pins the file by checksum rather than claiming
+    a person's typing is reproducible.
+
+### Component 14 invariants — a SCHEDULE must not re-rank, and must not raise capacity
+
+130. **`final_policy_rank` is the ONLY ordering key.** `scheduling/allocation.py` reads no
+    score, no probability, no mechanism, no eligibility flag and no geography. The type system
+    helps — `Placement` carries no score to read — and `c13_provenance_is_preserved` re-reads
+    Component 13's artifact after the run and compares eight columns row by row at error
+    severity. A scheduler that reordered by risk would be a second policy layer with no ADR.
+131. **Capacity is inherited and never created.** Every horizon is
+    `ceil(k / test_median_daily_capacity)` over the fold's own observed operating days. There is
+    no function parameter, no CLI flag and no branch that raises a slot count or extends a
+    horizon, and `tests/test_cli_scheduling.py` asserts that `--capacity`, `--slots-per-day`,
+    `--horizon-days`, `--extend-horizon` and `--threshold` all stay absent.
+132. **The calendar is READ, never generated.** An operating day is a date Component 13's
+    universe carries. Three inspections in the snapshot fall on a weekend, so a synthesised
+    Monday-to-Friday calendar would be wrong at the edges — and the holiday list it would need
+    is unverifiable here.
+133. **`flat_median` is a SCENARIO and is tautological at two of five cutoffs.** The horizon is
+    `k / median` days of `median` slots, so it holds exactly `k`: backlog zero, utilisation
+    exactly 1.000, before anything is measured. Every scenario row carries `is_scenario`, an
+    advisory fires whenever any is written, and **no summary or manifest field ever pools it
+    with the observed calendar** — pooling would divide the headline by however many modes ran.
+134. **`inspection_schedule` has NO `execution_status` column, deliberately.** An execution
+    outcome must never retroactively change a plan, and the strongest form of that guarantee is
+    not giving it a column to write into. A consumer who wants both facts joins on the key.
+135. **A deferred row still occupies a slot.** `OCCUPYING_STATUSES = {scheduled, deferred}`. A
+    deferral moves an inspection rather than removing it, so it still consumes capacity, and the
+    accounting identity is `n_scheduled + n_backlog + n_cancelled == n_recommended` with
+    `n_deferred` a *breakdown* of the scheduled block rather than a fourth term.
+136. **"Not scheduled" is NEVER redefined as "not recommended".** A backlogged row keeps its
+    rank, mechanism, reason code and eligibility. This is the easiest defect in the component to
+    introduce and the hardest to see, because the resulting artifact is internally consistent.
+137. **Three human layers, never merged.** Recommendation override (*who*, Component 13),
+    scheduling adjustment (*when*, Component 14), execution deviation (*what happened*). Three
+    id namespaces, three disjoint verb vocabularies, enforced at **import time** by
+    `definitions._guard_registry` and re-checked from the artifacts.
+138. **A re-plan appends a planning run; it never mutates one.** `SchedulePlan` is frozen and
+    `replan()` returns a new one. Completed rows keep their slot forever; rows on a day before
+    the re-plan point are frozen; `original_*` is copied forward untouched. The one exemption is
+    narrow: a `not_performed` row moves even from a past day, because freezing it would strand
+    the inspection the report exists to rescue.
+139. **A re-plan backfills where an override does not, and the distinction is written down.** An
+    excluded row is a human decision that the slot should not be used; a day that did not happen
+    is capacity that still exists. A cancellation — by adjustment or in the field — is a removal
+    and is never backfilled.
+140. **A scheduling adjustment NEVER displaces a coverage-reserve row.** It always takes the
+    lowest-ranked `risk_priority` row on the target day, and refuses the run if none exists.
+    Taking the reserve's slot would convert a scheduling change into a coverage cut silently.
+141. **No solver, and the reason is recorded rather than assumed.** ADR 0043: strict priority
+    preservation has a closed form over a unique contiguous rank, so there is nothing to search
+    over; every constraint an optimiser would trade off is absent; and a solver returns a
+    search-order-dependent answer among equal objectives, which breaks byte-identity.
+
+## Key operational-scheduling facts (measured 2026-08-26 on the full policy artifact)
+
+142. **The observed calendar exists and is an observation.** `inspection_date` on the
+    recommendation universe gives each fold's real operating days and the real volume worked on
+    each. 2026Q2: 63 days, min 1 / median 28 / max 55. The median agrees with Component 5's
+    `test_median_daily_capacity` by construction, and the profiler cross-checks it.
+143. **The horizon rule is total.** `ceil(k / median)` demands more operating days than the fold
+    contains in **0 of 90** (fold, capacity) cells. Widest: covid_shift `k_pct_10`, 41 of 390.
+144. **44 of 90 cells cannot fit their approved queue** into their own horizon — 48.9% — for
+    **784** inspections. Under `flat_median` the backlog is **zero in every cell**, by
+    construction. That contrast fixed `DEFAULT_CAPACITY_MODE`.
+145. **THE HEADLINE: 1,012 of 3,459 coverage-reserve slots (29.3%) are lost to the horizon.**
+    136 of 273 reserve-bearing cells lose some; **91 lose it entirely**. Cause: Component 13
+    fills the risk block at ranks `1..n_risk` and puts the reserve after it, so the reserve is
+    *always* the rank tail — 0 exceptions across all 273 cells — and a strict-priority schedule
+    takes the tail first. **Reported at advisory severity and deliberately not corrected**:
+    promoting reserve rows is re-ranking. Per policy the share lost runs 25.2% to 51.7%.
+146. **Establishments legitimately recur inside one fold.** 1,573 establishment-fold pairs hold
+    more than one scored canvass; 1 of 2,890 rows in the `k_1_week` queue is a repeat. So
+    uniqueness is an **error** check on `target_inspection_id` and only an **advisory** on
+    `establishment_id` — the stronger invariant would have gone red on correct data.
+147. **Quarter-opening days are systematically thin.** 20 of 180 horizons open on a day holding
+    less than half the window's median rate; 2024Q1 and 2026Q1 both open on a single inspection
+    against medians of 34 and 35. Every `k_1_day` number in those cells is dominated by one
+    unrepresentative day, and an advisory names them rather than the horizon starting somewhere
+    flattering.
+148. **Production run:** 1,260 cells (2 modes × 7 policies × 18 folds), 141,582 queue rows,
+    136,094 scheduled, 5,488 backlogged in 308 cells, 11,067 idle slots in 679 cells, **0
+    inversions**, 27 error checks green, 7 advisories, ~12 s. **13 of 13 tables byte-identical
+    across two independent runs**, and identical again under shuffled recommendation, adjustment
+    and execution rows.
+149. **No execution event in this repository describes anything that happened in Chicago.** The
+    contracts and engines are fully implemented and tested against synthetic fixtures; the
+    production run's execution and adjustment logs are **typed empty**, and an advisory says so
+    so nobody mistakes a typed zero for a measurement.
+
+## Key decision-policy facts (measured 2026-08-26 on the full calibrated artifact)
+
+Detail in `docs/analysis/policy_findings.md`.
+
+* **7 policies x 4 models x 18 folds x 5 capacities, 1,453,760 recommendation rows, 38.9 s.**
+  22 checks: 0 errors, 4 advisories. **11 of 11 tables byte-identical across two independent
+  production runs.** Refits, re-executions, bit-identity gates: none.
+* **THE HEADLINE IS A REFUTATION.** Establishments with no code-era canvass history are
+  **10.4%** of the quarterly candidates and take **40-58% of the top of the queue** under pure
+  risk — a selection ratio of **3.96 to 5.57** across all four models. Their citation rate is
+  genuinely higher: **0.4883 vs 0.4283**, and they hold 11.9% of the positives. **The risk queue
+  over-serves this population fourfold; it does not neglect it.**
+* **Component 12's finding is about a DIFFERENT population.** Only **456 of 14,162** eligible
+  rows (3.2%) sit in `__UNKNOWN__`. "No history" and "no geography" overlap and are not the same
+  thing.
+* **A coverage FLOOR is inert in 338 of 340 quarterly cells** at the population share (2 slots
+  granted); 0 at half the share; 101 at twice it. It binds only where risk does not clear it,
+  which on this data is almost nowhere.
+* **A FORCED reserve costs citations, and the price grows with capacity.** At one week
+  (2,780 slots): half share −8 for +76 eligible; population share −15 for +155; **double share
+  −34 for +343**. The cost holds for every model except one cell of one model.
+* **THE ONE-DAY DELTAS ARE INSIDE THE NOISE**: ±1 to ±3 citations out of 348 across 17 folds.
+  `coverage_forced_population_share` posting +2 on `xgboost_platt` is the outlier, not the
+  pattern — `logistic_regression_platt` posts −9 in the same cell.
+* **NOTHING CHANGED FOR `__UNKNOWN__`.** 405 rows, 166 positives, **2 selected and 1 citation
+  found — identical under all seven policies** at one day of capacity.
+* **NO POLICY WINNER.** Two policies survive at `k_1_day` and neither dominates. The run prints
+  *the data does not determine the correct policy*, and `a_winner_was_determined` fires as an
+  advisory.
+* **Production model: `xgboost_platt`, decided on CALIBRATION, not on discovery.** All four
+  candidates' NDE sensitivity bands overlap under Component 5's 1,000-replication study — the
+  headline metric of this project cannot tell them apart. ⚠ The discarded tie band (a ROC-AUC
+  spread of 0.0058, a unit error) would have selected `neural_numeric_only_platt`; both outcomes
+  are emitted on every run.
+* **The eligible share of the one-day queue swings 0.828 (2022Q2) to 0.036 (2026Q2)**
+  non-monotonically (2025Q4 = 0.667). Volatility, not a trend with a slope — but the two most
+  recent quarters are among the three lowest.
+* **44.8% of the recommended queue carries a `limited_history` warning.** A warning is never an
+  abstention: Sentinel has no predictive interval, so there is nothing to abstain on.
+* **On `covid_shift` all 22 one-day slots go to eligible establishments** under pure risk —
+  100% of the queue against 15.5% of the population. Never pooled with a quarterly number.
+
+## Key fairness-audit facts (measured 2026-08-25 on the full calibrated artifact)
+
+Detail in `docs/analysis/fairness_findings.md`.
+
+* **5 models x 2 geographies x 18 folds, 207,680 audited rows, 145.1 s.** 13/13 error checks
+  pass, 13 advisories, inputs byte-identical before and after.
+* **The disparity exists in the data before any model does**: outcome rate spans **0.2200 to
+  0.5658** across supported community areas (0.2350-0.6099 across ZIPs) against a city-wide
+  0.4283. So unequal selection by a working risk model is EXPECTED, not a finding.
+* **Ranking varies more between neighbourhoods than between models.** Within-group ROC-AUC
+  spans **0.509 to 0.710** over 51 supported community areas — spread 0.164-0.198 by model,
+  against ~0.008 between the project's best and worst model. Community area 53 is the
+  best-ranked group for all five models.
+* **Component 9's global calibration improvement did NOT reach every group**: 25/33 community
+  areas improved for `xgboost` and `lightgbm`, 23/33 for the GLM, and only **17/33** for
+  `neural_numeric_only`. Coherent with C9 rather than against it — the network had the best
+  UNcalibrated ECE and least to gain. Group ECE levels are roughly **double** the global
+  figure (0.082-0.094 vs 0.0474), because a pooled ECE averages over groups that partly cancel.
+* **The sharpest finding is the group with no geography**, 405 quarterly rows: 59.5% have no
+  prior inspection of any kind (0.74% overall, **80x**), 61.7% no code-era canvass history
+  (10.4% overall, **6x**), ROC-AUC **0.509** (chance), selected at **0.20x** the city rate,
+  and **0.6%** of its violations captured by the top 5% against a city-wide 7.0%. Of its 166
+  real violations the top 5% found **one**.
+* The group with no recoverable geography IS the group with no history — C8's as-of join can
+  only carry a location forward from an earlier inspection. **No causal direction is claimed.**
+* **Capture ranges 0.006 to 0.151** across supported community areas against an overall 0.070.
+* **Support**: `community_area` 51 of 78 supported (33 for calibration); `zip` 56 of 69 (41).
+  286 groups observed, 132 supported, **154 insufficient and all recorded**.
+* **Drift could not be answered**: exactly ONE quarterly fold per (model, geography) has
+  enough support to compute a disparity at all, so every series is `insufficient_folds`.
+  `DRIFT_MIN_FOLDS = 3` was frozen before any series existed.
+* **`covid_shift`**: 8,840 rows — more than any single quarter — supporting **11 of 78**
+  community areas and 5 for calibration. Six components, six divergences.
+* Determinism: two full production runs are **byte-identical across all ten tables**.
+* 247 new tests (2,084 -> **2,331**), 72 figures.
+
 ---
 
 ## Key baseline-model facts (measured 2026-08-17 on the full feature table)
@@ -687,6 +1042,16 @@ Snapshot `7d3c4069...ad38`, 314,245 rows. Detail in
 ## Important paths
 
 ```text
+src/sentinel/scheduling/                 Component 14: the operational schedule
+  definitions.py                         horizon rule, both capacity modes, the boundary
+  horizon.py                             the observed calendar; the ONLY module setting capacity
+  allocation.py                          greedy placement in policy-rank order; reads no score
+  adjustments.py / execution.py          the two external human contracts
+  replan.py                              appends a planning run, never mutates one
+data/processed/scheduling/               tenth layer; NEVER joined onto features
+  inspection_schedule_<UTC>.parquet      when, and in which slot
+  schedule_backlog_<UTC>.parquet         approved and not reached; still recommended
+  priority_preservation_<UTC>.parquet    what the calendar cost the reserve
 src/sentinel/boosting/                   Component 7: the tuned tree models
   definitions.py                         TUNED_PARAMS lives here, as literals
   tuning.py                              the protocol that cannot reach a test window
@@ -702,14 +1067,58 @@ data/processed/tuning/                   search trials; NO number here is a resu
 data/processed/neural/                   C8 experimental categoricals; NOT features
 data/processed/calibration/              C9 calibrators + diagnostics; NOT joinable
   tuning_trials_<UTC>.parquet            400 rows; validation windows, not test
+src/sentinel/explain/                    Component 11: feature attribution
+  definitions.py                         EXPLAIN_REGISTRY = the support matrix
+  refit.py                               re-execution + ADR 0026's gate, REUSED
+  background.py                          the leakage surface; training window ONLY
+  attribute.py                           tree / linear / permutation; no shap import
+src/sentinel/policy/                     Component 13: the decision policy layer
+  definitions.py                         POLICY_GRID, the selection rule, the boundary
+  eligibility.py                         one column, one predicate, and what it refuses
+  allocation.py                          risk block, coverage reserve; NO score written
+  select.py                              the lexicographic production-model rule
+  governance.py                          warnings, and the human override layer
+  validate.py                            18 errors (the policy) vs 4 advisories (its price)
+data/processed/policy/                   C13 decisions; keyed by ROW, never joinable
+  inspection_recommendations_<UTC>.parquet  the queue + the whole universe, 1,453,760 rows
+  policy_selection_allocation_<UTC>.parquet offered / satisfied / granted, three numbers
+  policy_comparison_<UTC>.parquet        what each policy costs, for EVERY model
+  policy_model_selection_<UTC>.parquet   both tie-rule outcomes, side by side
+  policy_override_log_<UTC>.parquet      the human layer; empty on most runs
+docs/analysis/policy_findings.md
+docs/data_contracts/policy_decisions.md
+docs/interview/component_13.md
+scripts/profile_policy.py                read-only; CAUGHT C13's central refutation
+src/sentinel/fairness/                   Component 12: the group-behaviour audit
+  definitions.py                         the group registry, incl. the REFUSED geographies
+  groups.py                              the group frame; the temporal leakage surface
+  support.py                             decided BEFORE any metric, and it shapes everything
+  priority.py                            selection rate AND capture, never combined
+  validate.py                            13 errors (the audit) vs 3 advisories (the world)
+data/processed/fairness/                 C12 group metrics; keyed by GROUP, never joinable
+  fairness_group_support_<UTC>.parquet   every observed group, supported or not
+  fairness_priority_audit_<UTC>.parquet  who reaches the top k, and what it captured
+  fairness_group_definitions_<UTC>.parquet  incl. why ward and census tract are refused
+docs/analysis/fairness_findings.md
+docs/data_contracts/fairness_audit.md
+docs/interview/component_12.md
+scripts/profile_fairness.py              read-only; FIXES C12's frozen constants
+data/processed/explanations/             C11 attributions; the SHARPEST never-join
+  explanation_values_<UTC>.parquet       648,000 rows; one per (model,fold,row,feature)
+  explanation_cases_<UTC>.parquet        additivity + provenance + calibration link
+  explanation_support_<UTC>.parquet      incl. the model that could NOT be explained
 docs/analysis/baseline_models_findings.md
 docs/analysis/boosting_models_findings.md
+docs/analysis/explainability_findings.md
 docs/data_contracts/baseline_predictions.md
 docs/data_contracts/boosted_predictions.md
+docs/data_contracts/explanations.md
 docs/interview/component_7.md
+docs/interview/component_11.md
 scripts/profile_baselines.py             read-only, train windows only
-scripts/profile_neural.py      read-only, train windows only
+scripts/profile_neural.py                read-only, train windows only
 scripts/profile_boosting.py              read-only, train + calibration only
+scripts/profile_explanations.py          read-only; FIXES C11's frozen constants
 src/sentinel/ingest/socrata.py            the client. Most important file.
 src/sentinel/ingest/food_inspections.py   orchestration
 src/sentinel/ingest/manifest.py           provenance record
@@ -719,7 +1128,7 @@ data/raw/food_inspections/                output: parquet + manifest_*.json
 docs/api/socrata_findings.md              verified API behaviour — read before
                                           touching the client
 docs/data_contracts/food_inspections_raw.md   what a raw file guarantees
-docs/decisions/                           19 ADRs
+docs/decisions/                           35 ADRs
 
 src/sentinel/entity/evidence.py           the match rules. Read the findings
                                           doc before changing any of them.
@@ -776,6 +1185,9 @@ uv sync                                       # setup
 uv run sentinel ingest --dev                  # small pull (SENTINEL_DEV_ROW_LIMIT)
 uv run sentinel ingest --limit 5000           # explicit cap
 uv run sentinel ingest --full                 # entire dataset (~70 min, verified)
+uv run sentinel schedule                      # Component 14 plan (~12 s, both modes)
+uv run sentinel schedule --dry-run --report   # plan and validate, writing nothing
+uv run sentinel schedule --capacity-mode observed_calendar   # the measured mode only
 uv run sentinel query --list
 uv run sentinel query --name row_count
 uv run sentinel resolve                       # entity resolution (~45 s)
@@ -798,6 +1210,19 @@ uv run sentinel train-neural --report                # 1998.7 s, 234 fits, write
 uv run sentinel train-boosting                # 3 boosted models, 54 fits (~21 s)
 uv run sentinel train-boosting --models lightgbm
 uv run sentinel train-boosting --dry-run --report
+uv run python scripts/profile_explanations.py  # 9 read-only attribution profiles
+uv run sentinel explain --report               # C11, ~19 min; NO OMP_NUM_THREADS override
+uv run sentinel explain --models xgboost --sample-size 40 --dry-run --report
+uv run python scripts/profile_fairness.py      # 10 read-only group-audit profiles
+uv run sentinel audit-fairness --report        # C12, ~145 s; NO thread override needed
+uv run sentinel audit-fairness --dry-run --report
+uv run sentinel audit-fairness --models xgboost_platt --group-definitions community_area
+
+uv run sentinel decide --report                # C13, ~39 s; NO thread override needed
+uv run sentinel decide --dry-run --report      # decide and validate, writing nothing
+uv run sentinel decide --policies coverage_forced_double_share --model lightgbm_platt
+uv run sentinel decide --overrides overrides.json --report   # the human layer, audited
+uv run python scripts/profile_policy.py        # the 8 pre-implementation profiles
 uv run sentinel evaluate                      # heuristics only (~165 s)
 uv run sentinel evaluate --predictions data/processed/predictions/baseline_predictions_<stamp>.parquet
                                               # + the C6 models (~238 s)
@@ -809,7 +1234,7 @@ uv run python scripts/profile_features.py     # 21 read-only history profiles
 uv run python scripts/profile_evaluation.py   # 17 read-only evaluation profiles
 uv run python scripts/profile_baselines.py    # 10 profiles, TRAIN WINDOWS ONLY
 uv run python scripts/profile_boosting.py     # 7 profiles, train + calibration only
-uv run pytest                                 # 1,776 tests, offline
+uv run pytest                                 # 3,009 tests, offline
 uv run pytest -m live                         # 3 live tests, hits the real API
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src/sentinel scripts
@@ -821,6 +1246,13 @@ a bare `sentinel ingest` cannot accidentally pull 314k rows.
 ---
 
 ## Naming conventions
+
+* `scheduling/` artifacts are `<table>_<UTC>.parquet` with the manifest keyed to
+  `inspection_schedule`. `schedule_config_id` is `<strategy>__<capacity_mode>`, and
+  `planning_run_id` is `PR-<12 hex>` — a **content hash of the cell and configuration**, never a
+  clock and never random, because a timestamped id would make two runs over identical inputs
+  differ in a column.
+
 
 * Raw files: `food_inspections_<YYYYMMDD>T<HHMMSS>Z.parquet` (UTC, start time).
 * Manifests: `manifest_<parquet stem>.json`, same directory. The `manifest_`
@@ -880,13 +1312,35 @@ a bare `sentinel ingest` cannot accidentally pull 314k rows.
     sign flip, so it is not worthless. But on `covid_shift` the ablation **wins**
     (NDE 0.2571 vs 0.2512): it does partly encode scheduling policy, and when the
     policy itself breaks a model leaning on it is the more fragile one.
-13. **Should model selection prefer the shift-robust model?** STILL OPEN, and
-    Component 7 made it harder rather than easier. C6 measured a clean inversion on
-    `covid_shift`; C7 measured a *metric-dependent* ordering — lightgbm takes NDE and
-    ROC-AUC, `logistic_regression` takes PR-AUC and precision@k. So there is now no
-    single "shift-robust model" to prefer, and the project still has no rule for which
-    fold set governs a release decision. Component 9 or a policy component will have to
-    settle it.
+    **Component 11 supplied the mechanism C6 could only infer.** Under the shift,
+    three of four models leaned **2-3x harder** on that feature: xgboost's mean
+    |SHAP| went 0.1499 -> 0.3728 and its rank 3 -> **1**; the network's 0.1232 ->
+    0.3546, rank 8 -> **1**. The models did not merely *have* the feature during
+    COVID, they reallocated their reasoning onto it. The logistic model is the
+    instructive exception - a linear model cannot reallocate, so its top two
+    features simply grew instead.
+13. **Should model selection prefer the shift-robust model?** **CLOSED by Component 13 — as
+    a POLICY decision, not a scientific one.** `xgboost_platt` is the production model, selected
+    by a lexicographic rule frozen in advance. The measurement that made the closure possible is
+    also the uncomfortable one: **axis 1 separated nothing.** Under Component 5's own
+    1,000-replication label-flip study all four candidates' NDE intervals overlap, so the
+    headline metric of this entire project cannot tell them apart, and the rule fell to
+    calibration. ⚠ **The tie band decides the answer**: the discarded band (Component 8's
+    five-seed ROC-AUC spread of 0.0058, applied to an NDE difference — a unit error) selects
+    `neural_numeric_only_platt` instead. Both outcomes are emitted on every run and ADR 0039
+    records the sequence, because the rule was fixed *after* its inputs were first read.
+    **The scientific question — which model is actually best — remains unanswered, and Component
+    13's measurement is that it may not be answerable on this data.** The history that made it
+    hard, kept for context: C6 measured a clean inversion
+    on `covid_shift`; C7 measured a *metric-dependent* ordering — lightgbm takes NDE and
+    ROC-AUC, `logistic_regression` takes PR-AUC and precision@k. C9 added that the best
+    uncalibrated model (`neural_numeric_only`, ECE 0.0563) has the *second-worst*
+    calibrated ECE. **C11 removes the last easy tiebreak**: the four models score within
+    0.0156 NDE and reason *differently* — importance rank rho is only **0.4351** between
+    `logistic_regression` and `lightgbm`, sharing 3 of their top 10 features — so there is
+    no "the models agree that X matters" consensus to appeal to, and preferring the model
+    with the tidiest attribution table would be selecting on legibility. C11 is explicitly
+    forbidden from settling this. A policy component must.
 14. **Does the missing-indicator encoding need an interaction term?** ANSWERED, and the
     answer is "not much". A tree gets the interaction for free, and both boosters
     finished within 0.005 NDE of the logistic model. If a differing slope in the missing
@@ -895,11 +1349,191 @@ a bare `sentinel ingest` cannot accidentally pull 314k rows.
     but logistic wins 7 of 17 folds and the gap sits inside the seasonality redraw band.
     The project has the redraw and the per-fold table but no paired significance test
     across folds; a bootstrap over establishments would answer it more directly.
+17. **Is a policy's opportunity cost distinguishable from zero?** OPEN. Component 5's
+    sensitivity machinery perturbs labels for NDE, but nothing equivalent was run over the
+    policy comparison — so "is −34 citations a real difference" has no interval attached to it.
+    A bootstrap over establishments within each fold would answer it.
+18. **Is the coverage decline real, or is it volatility?** OPEN. The eligible share of the
+    one-day queue runs 0.828 → 0.036 across 17 quarters but non-monotonically. Seventeen points
+    cannot separate a trend from noise; a wider capacity or a pooled multi-quarter window would.
+19. **Can anything reach the `__UNKNOWN__` group without a geographic rule?** OPEN, and probably
+    not within this project. Component 13 measured that no policy in its grid changes that
+    group's treatment at one day of capacity, and ADR 0038 refuses an allocation keyed to a
+    failed geocode. The honest fix is upstream: better geocoding in Component 1 or 2.
+20. **Is the override contract usable by a real reviewer?** UNKNOWN. It is tested against
+    synthetic files only, and no operations room has ever seen it.
 16. **What is the actual ceiling of this feature representation?** Two very different
     nonlinear learners and a penalised GLM land within 0.005 NDE. That is the strongest
     evidence the project has that the limit is the 26 features rather than the estimator
     — which makes the next high-value move a Component 4 change (311 complaints, weather,
     facility type, CDPH risk category, statutory days-overdue), not a fourth model.
+
+---
+
+## Lessons learned (the Sentinel API)
+
+* **This is not a numbered component, and saying so up front prevented a naming collision.**
+  The roadmap already names "Component 15" (routing, blocked) and "Component 16" (the
+  deferral/human-review gate, since built — see below). The user explicitly decided this work
+  should claim neither slot — it is cross-cutting infrastructure beside the numbered pipeline. Ask
+  before assuming a new deliverable gets the "next" number in a strict roadmap.
+* **The hardest design question was resolved by reading the actual call sites, not by guessing.**
+  Whether a write endpoint could call `apply_adjustments`/`record_execution`/`replan` directly was
+  answered by reading `scheduling/build.py::run_schedule` and finding those functions are only
+  ever correctly invoked inside its per-cell batch loop, which recomputes several other tables and
+  checksums inputs before/after. That's what justified "stage, never apply" (ADR 0049) — a
+  conclusion reached from evidence, not from a general REST-API instinct.
+* **Reuse `writer.SCHEMAS`/`finalize` for test fixtures, not hand-rolled dicts.** Building minimal
+  Parquet fixtures directly through each component's own writer (as the project's other tests do)
+  caught missing-column mistakes immediately and loudly, rather than producing a fixture that
+  silently drifted from the real contract.
+* **`**dict[str, object]` unpacking into a pydantic model fails mypy strict; `.model_validate(row)`
+  does not.** `polars.DataFrame.row(0, named=True)` returns an `Any`-typed dict that mypy doesn't
+  check, but an explicitly `dict[str, object]`-typed list (from a function with that return
+  annotation) does trigger per-field argument-type errors on `**` unpacking. Prefer
+  `Model.model_validate(row)` uniformly when constructing a pydantic model from a dict of unknown
+  provenance.
+* **FastAPI's `Depends(...)`-as-default is exactly the pattern ruff's B008 exists to flag.**
+  Needed `[tool.ruff.lint.flake8-bugbear] extend-immutable-calls = ["fastapi.Depends", ...]`
+  rather than disabling B008 project-wide.
+
+---
+
+## Lessons learned (Component 16)
+
+* **A join key that is "unique enough" for the writer is not unique enough for a cross-table
+  validator.** `target_inspection_id` is unique within one (policy, fold, k_name) cell of
+  `inspection_recommendations`, but repeats across different policies' cells for the same
+  establishment. The first version of `warning_trigger_rows_are_selected_and_warned` joined on
+  `target_inspection_id` alone and produced 583,854 false-positive failures at full scale — every
+  one of them a row matched against a *different policy's* `is_selected`/`warnings` value for the
+  same establishment id. The fix was joining on the full cell key. The lesson: a spot-check
+  against a handful of synthetic rows in a unit test will not surface a many-to-many join defect
+  that only shows up once the same id legitimately recurs across a real-scale artifact — running
+  the real CLI against real data caught it, the unit tests did not.
+* **The same defect nearly repeated one function over, and the execution contract's own key
+  saved it.** The execution-gap anti-join was tempted to key on `target_inspection_id` alone too.
+  Checking Component 14's actual `EXECUTION_REQUIRED_FIELDS` first — `schedule_config_id,
+  policy_id, fold_id, k_name, target_inspection_id`, deliberately *not* including `model_name` or
+  `fold_set` — gave the correct five-column join key before the bug could be written at all.
+  Read the upstream contract's own required-fields tuple before inventing a join key.
+* **Guard against a reserved word with a literal substring check, not just enum-value
+  disjointness.** Component 14's `ScheduleStatus.DEFERRED` and the natural English word for "send
+  to a human" are one letter apart from colliding. Checking only that `ReviewResolutionAction`'s
+  *values* don't overlap `AdjustmentAction`'s would not have caught a hypothetical
+  `DEFERRED_FOR_REVIEW` status — it collides with nothing in the other enums and would still be
+  the exact confusion the layer separation exists to prevent. The guard checks the substring
+  `"defer"` directly, on every vocabulary value, as its own explicit assertion.
+* **When three docstrings elsewhere gesture at "a threshold" for your component, resolve the
+  tension in the ADR rather than picking a number or ignoring it.** `evaluation/metrics.py`,
+  `calibration/definitions.py` and `evaluation/build.py` all said "a threshold is genuinely needed
+  only by the Component 16 deferral gate." Read literally that could mean a real probability
+  cutoff — which ADR 0040 forbids outright, since this project has never built a predictive
+  interval. Flagging this as a genuinely open interpretive question to the user before
+  implementing (rather than silently choosing) was the right call; the user's answer (no numeric
+  threshold) is now on the record in ADR 0051 rather than assumed.
+
+---
+
+## Lessons learned (Component 14)
+
+* **When a validator fails on your own new code, read the validator before the code.** Five
+  error checks went red the first time the adjustment and execution paths ran end to end. Four
+  were real defects — a sort key that stopped being a total order once a re-plan appended a
+  second plan, a displaced row landing back in its own slot, a check comparing the whole backlog
+  table against only planning run 0, and an identity that double-counted deferred rows. The
+  fifth was the *check* being wrong: the temporal boundary as first written forbade moving a
+  `not_performed` row whose day had passed, which is exactly the operation re-planning exists to
+  perform. Component 7 learned to suspect the test first; this is that lesson one layer out.
+* **A profiler can refute an invariant you were about to assert.** Profile 5 was run to
+  establish "no establishment occupies two slots" and found it false — 1,573 establishment-fold
+  pairs hold more than one scored canvass. Asserting it would have produced a red build on
+  correct data, which is the failure that makes a suite stop being believed.
+* **Ship the tautology, labelled, rather than hiding it.** `flat_median` is saturated by
+  construction at two of five cutoffs. Deleting it would have been tidier; keeping it is what
+  makes the observed calendar's shortfall legible as a *finding* rather than a bare number.
+* **A promise in a comment is a debt.** `pyproject.toml` had said since Component 13 that a
+  solver would arrive with Component 14. It did not, and the promise was discharged explicitly
+  in ADR 0043 and in the comment itself rather than left quietly unredeemed.
+* **Measure the previous component's premise, again.** Component 13 refuted the finding it was
+  scoped around. Component 14 found that Component 13's central mechanism is substantially
+  notional once a calendar is applied. Twice now, the profiler has been the most valuable hour.
+* **Do not pool a scenario into a headline.** The reserve-loss figure was briefly 14.6% because
+  the manifest averaged the observed calendar with a mode that loses nothing by construction.
+  The real number is 29.3%. A scenario that cannot exhibit the effect must never be in the
+  denominator.
+
+## Lessons learned (Component 13)
+
+* **Profile the premise, not only the parameters.** The profiler existed to fix constants — which
+  column defines eligibility, how big the reserve should be. What it actually caught was that the
+  intervention the entire component had been scoped around was aimed at a population the risk
+  queue already over-serves fourfold. A component that had gone straight to implementation would
+  have shipped a working, well-tested, thoroughly documented coverage reserve and never learned
+  that the problem it solved does not exist here. **This is the single highest-value thing the
+  investigate-first rule has produced in the project.**
+* **Two words that sound identical are two different policies.** "Reserve 10% of capacity" means
+  either *guarantee at least 10% goes to this population* or *spend 10% on rows the ranking
+  passed over*. On this data the first is inert in 338 of 340 cells and the second gives up 34
+  citations a week. Implementing only one would have hidden the whole result — and which one you
+  would have picked depends entirely on which sentence you had in your head.
+* **The tie rule is the decision.** A lexicographic selection rule looks like it is decided by
+  axis 1. It is actually decided by *when you declare axis 1 a tie*, and two defensible bands
+  picked two different models. The band was also initially borrowed from the wrong metric, which
+  is the kind of unit error that survives review precisely because both numbers are "about 0.005".
+* **Report the number that flatters you with the same caveat as the one that does not.**
+  `coverage_forced_population_share` posts +2 citations *and* +31 eligible selections on the
+  production model — a result that would headline nicely. It is inside the noise, three other
+  models post negatives in the same cell, and the findings document says so.
+* **A negative result needs more documentation than a positive one, not less.** "We built the
+  mechanism and it does almost nothing" is only useful if the reader can see the measurement that
+  makes the inertness meaningful. Hence the floor/forced split, the per-model robustness table,
+  and the frontier that publishes the trade-off rather than resolving it.
+* **`floor()` on a small k is where every early test failure lived.** Three red tests in a row
+  were fixtures that had not thought hard enough about `int(0.20 * 4) == 0`. Component 7's rule
+  held again: when a leakage test fails, suspect the test first.
+* **Build the light comparison artifact, not the heavy one.** The first cut of the
+  warnings-do-not-change-the-queue check materialised a second full 1.45M-row universe to compare
+  two columns. `_queue_signature` keeps eight columns and proves the same thing.
+
+## Lessons learned (Component 11)
+
+* **When a leakage test fails, suspect the test first — third time it has paid.** A first
+  draft shifted `frame.head(500)` by 900 days to make "future" rows; they landed back inside
+  fold 0's own *training* window, so the test failed while nothing was wrong. Date the
+  synthetic future from the end of the whole table, not by an offset from each row.
+* **A tolerance measured on one fold is a tolerance measured from a sample of one.** The
+  probe fold gave a tree additivity residual of 8.92e-07; the production run reached
+  1.66e-06. The frozen 1e-5 (three orders above the probe) absorbed it. Had it been set at
+  1e-6 the run would have failed on arithmetic that was entirely correct.
+* **Ask what a passing check actually proves.** The permutation method's additivity residual
+  is 0.0 at *every* round count, because the path telescopes. It was tempting to report that
+  as evidence the values were accurate; it is evidence only that the sums are sound. The
+  measurement that mattered was a convergence sweep against an independent-seed reference,
+  and it showed the global ranking converging (rho 0.9964) long before any single value did
+  (median error 1.00%).
+* **The most dangerous defect in an attribution component leaves no trace.** Components 6 and
+  7 order the same 30 columns differently at 19 of 30 positions. The wrong list produces
+  arithmetically perfect values attached to the wrong features: no exception, no failed
+  additivity check, every figure wrong. Measure the size of a trap before building next to
+  it — the profiling script did that first, which is why the registry names the function
+  per model instead of inferring it.
+* **A "small" change to a closed component is still a change to a closed component.**
+  `embed.booster_for` would have been four lines and would have made the fifth model
+  explainable. It was written into an ADR and not added. The cost of not taking it is one
+  function call, recoverable whenever Component 8 is next opened for a reason of its own.
+* **Zero and null are different answers.** Zero is a legitimate attribution meaning "this
+  feature did not move the score". A placeholder table of zeros for an unexplainable model
+  would read as a model that used no features — worse than an empty table, because a reader
+  cannot tell.
+* **Check whether the library already does it before adding the library.** `shap` was going
+  to be a runtime dependency until the profiling script established that xgboost and lightgbm
+  each ship exact TreeSHAP and that linear SHAP has a closed form. It ended up dev-only, as a
+  test oracle, agreeing to **0.0** — the same shape C5 used for its metrics.
+* **A dev dependency can still break the runtime.** `shap` pulls numba, and without
+  `numba>=0.67` / `llvmlite>=0.49` floors the resolver backtracks numpy off 2.5.2 — the
+  version ADR 0026's bit-identity gate is baselined on. Downgrading the whole project to
+  satisfy a test oracle would have been the tail wagging the dog.
 
 ---
 
